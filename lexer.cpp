@@ -28,6 +28,14 @@ std::vector<token> lexer::run() {
                 emit_token(PIPE);
             }
 
+            case '!': {
+                emit_token(PIPE);
+            }
+
+            case '?': {
+                emit_token(PIPE);
+            }
+
             case '(': {
                 emit_token(PAREN_OPEN);
                 break;

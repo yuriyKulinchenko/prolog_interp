@@ -3,7 +3,7 @@
 #include  "lexer.h"
 
 int main() {
-    std::string input = "Variable, symbol, :- ([VariableA|])";
+    std::string input = "Variable, symbol :- ([VariableA|])";
     lexer lexer {input};
     auto vec = lexer.run();
     std::cout << vec;

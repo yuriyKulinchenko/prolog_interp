@@ -21,7 +21,10 @@ X(DOT)                 \
 X(COMMA)               \
 X(SEMI_COLON)          \
 X(RULE_OPERATOR)       \
-X(PIPE)
+X(PIPE)                \
+X(EXCLAMATION_MARK)    \
+X(QUESTION_MARK)
+
 
 enum class token_type {
 #define X(name) name,
