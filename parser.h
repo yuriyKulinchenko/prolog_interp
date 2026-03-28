@@ -42,7 +42,7 @@ The querying will be done through the terminal
 
  */
 
-#define NODE_TYPE_LIST(X) \
+#define NODE_TYPE_LIST(X)  \
 X(CLAUSE)                  \
 X(TERM)                    \
 X(AND)                     \
@@ -81,6 +81,27 @@ public:
     parser(std::vector<token>& token_list): token_vector(token_list), i(0) {}
 
     std::vector<node> run();
+
+    std::vector<node> program();
+    node clause();
+    node goalExpr();
+    node disjunction();
+    node conjunction();
+    node simpleGoal();
+    node term();
+    node list();
+    node elements();
+
+    // Helper functions:
+
+    token& peek();
+    token& next();
+    token& advance();
+    token& advance(int n);
+    token& consume(token_type type, const std::string& error_message);
+    bool check(token_type type);
+    bool match(token_type type);
+    bool at_end();
 
 private:
     int i;
