@@ -118,6 +118,6 @@ private:
     std::vector<node> goal_vector;
 };
 
-
+std::ostream& operator<<(std::ostream& stream, node& node);
 
 #endif //PARSER_H

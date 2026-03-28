@@ -174,3 +174,27 @@ bool parser::match(token_type type) {
 bool parser::at_end() {
     return token_vector.size() == i;
 }
+
+void lisp_list_log(std::ostream& stream, std::string& identifier, std::vector<node>& nodes) {
+        stream << '(';
+        stream << identifier;
+        if (!nodes.empty()) {
+            for (auto & node : nodes) {
+                stream << ", " << node;
+            }
+        }
+        stream << ')';
+}
+
+std::ostream& operator<<(std::ostream& stream, node& node) {
+    if (node.type == node_type::VARIABLE || node.type == node_type::TERM) {
+        if (node.type == node_type::TERM && node.children.empty()) {
+            return stream << node.name;
+        }
+        lisp_list_log(stream, node.name, node.children);
+    } else {
+        std::string identifier = node_type_to_string(node.type);
+        lisp_list_log(stream, identifier, node.children);
+    }
+    return stream;
+}
