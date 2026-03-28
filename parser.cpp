@@ -2,8 +2,12 @@
 #include <iostream>
 #include <optional>
 
-
-
+node create_transparent_list(node_type type, std::vector<node> nodes) {
+    if (nodes.size() == 1) {
+        return nodes[0];
+    }
+    return node{type, nodes};
+}
 
 std::vector<node> parser::run() {
     return program();
@@ -45,7 +49,7 @@ node parser::disjunction() {
         nodes.push_back(conjunction());
     }
 
-    return {node_type::DISJUNCTION, nodes};
+    return create_transparent_list(node_type::DISJUNCTION, std::move(nodes));
 }
 
 // Conjunction ::= SimpleGoal (',' SimpleGoal)*
@@ -55,7 +59,8 @@ node parser::conjunction() {
     while (match(token_type::COMMA)) {
         nodes.push_back(simpleGoal());
     }
-    return node{node_type::CONJUNCTION, nodes};
+
+    return create_transparent_list(node_type::CONJUNCTION, std::move(nodes));
 }
 
 // SimpleGoal ::= Term | '(' GoalExpr ')' | '!'
