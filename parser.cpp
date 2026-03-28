@@ -26,7 +26,7 @@ node parser::clause() {
         goal_instance = goalExpr();
     consume(token_type::DOT, "ERROR: Expect '.' after clause");
 
-    node clause_instance = {.type = node_type::CLAUSE, .children = {term_instance}};
+    node clause_instance = {node_type::CLAUSE, {term_instance}};
     if (goal_instance) clause_instance.children.push_back(*goal_instance);
     return clause_instance;
 }
@@ -34,7 +34,7 @@ node parser::clause() {
 // GoalExpr ::= Disjunction
 
 node parser::goalExpr() {
-    return {node_type::GOAL, .children ={disjunction()}};
+    return {node_type::GOAL, {disjunction()}};
 }
 
 // Disjunction ::= Conjunction (';' Conjunction)*
@@ -44,24 +44,25 @@ node parser::disjunction() {
     while (match(token_type::SEMI_COLON)) {
         nodes.push_back(conjunction());
     }
-    return {node_type::DISJUNCTION, .children = nodes};
+
+    return {node_type::DISJUNCTION, nodes};
 }
 
 // Conjunction ::= SimpleGoal (',' SimpleGoal)*
 
 node parser::conjunction() {
     std::vector nodes {simpleGoal()};
-    while (match(token_type::SEMI_COLON)) {
+    while (match(token_type::COMMA)) {
         nodes.push_back(simpleGoal());
     }
-    return {node_type::CONJUNCTION, .children = nodes};
+    return node{node_type::CONJUNCTION, nodes};
 }
 
 // SimpleGoal ::= Term | '(' GoalExpr ')' | '!'
 
 node parser::simpleGoal() {
     if (match(token_type::EXCLAMATION_MARK)) {
-        return {.type = node_type::CUT};
+        return node{node_type::CUT};
     }
 
     if (match(token_type::PAREN_OPEN)) {
@@ -76,12 +77,12 @@ node parser::simpleGoal() {
 // Term ::= variable | identifier | identifier '(' Elements ')' | List
 
 node parser::term() {
-    if (match(token_type::VARIABLE)) {
-        return {.type = node_type::VARIABLE, .name = advance().identifier};
+    if (check(token_type::VARIABLE)) {
+        return {node_type::VARIABLE, advance().identifier};
     }
 
     // Parsing identifier:
-    if (match(token_type::SYMBOL)) {
+    if (check(token_type::SYMBOL)) {
         std::string identifier_name = advance().identifier;
         std::optional<std::vector<node>> nodes;
         if (match(token_type::PAREN_OPEN)) {
@@ -89,7 +90,7 @@ node parser::term() {
             consume(token_type::PAREN_CLOSED, "ERROR: Unmatched bracket");
         }
 
-        node term_instance = {.type = node_type::TERM, .name =identifier_name};
+        node term_instance = {node_type::TERM, identifier_name};
         term_instance.children = nodes ? *nodes : std::vector<node>{};
         return term_instance;
     }
@@ -106,22 +107,22 @@ node parser::term() {
 node parser::list() {
     // Empty list:
     if (match(token_type::SQUARE_CLOSED)) {
-        return {.type = node_type::TERM, .name = "[]"};
+        return {node_type::TERM, "[]"};
     }
 
     std::vector<node> nodes = elements();
     // Elements have to be converted into a linked list:
-    node head = {.type = node_type::TERM, .name = ".", .children = {nodes[0]}};
+    node head = {node_type::TERM, ".", {nodes[0]}};
     std::vector<node>* tail = &head.children;
     for (int i = 1; i < nodes.size(); i++) {
-        tail->emplace_back(.type = node_type::TERM, .name = ".", .children = {nodes[i]});
+        tail->push_back({node_type::TERM, ".", {nodes[i]}});
         tail = &(*tail)[1].children;
     }
 
     if (match(token_type::PIPE)) {
         tail->push_back(term());
     } else {
-        tail->emplace_back(.type = node_type::TERM, .name = "[]");
+        tail->emplace_back(node_type::TERM, "[]");
     }
 
     return head;
@@ -152,7 +153,11 @@ token& parser::advance(int n) {
 };
 
 token& parser::consume(token_type type, const std::string& error_message) {
-    if (peek().type != type) throw std::logic_error(error_message);
+    if (peek().type != type) {
+        std::cerr << "parsing at: " << token_type_to_string(peek().type) << '\n';
+        std::cerr << "token index: " << i << '\n';
+        throw std::logic_error(error_message);
+    }
     return advance();
 };
 

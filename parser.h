@@ -5,6 +5,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include <utility>
 #include <vector>
 #include "lexer.h"
 
@@ -68,11 +69,17 @@ inline std::string node_type_to_string(node_type type) {
 }
 
 struct node {
+    explicit node(node_type type): type(type) {}
+    node(node_type type, std::string name):
+        type(type), name(std::move(name)) {}
+    node(node_type type, std::vector<node> children):
+        type(type), children(std::move(children)) {}
+    node(node_type type, std::string name, std::vector<node> children):
+        type(type), name(std::move(name)), children(std::move(children)) {}
+
     node_type type;
     std::string name; // Optionally present
-    union {
-        std::vector<node> children;
-    };
+    std::vector<node> children;
 };
 
 
