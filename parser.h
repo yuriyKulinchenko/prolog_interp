@@ -44,9 +44,11 @@ The querying will be done through the terminal
 
 #define NODE_TYPE_LIST(X)  \
 X(CLAUSE)                  \
+X(GOAL)                    \
 X(TERM)                    \
-X(AND)                     \
-X(OR)                      \
+X(VARIABLE)                \
+X(CONJUNCTION)             \
+X(DISJUNCTION)             \
 X(CUT)
 
 
@@ -67,9 +69,9 @@ inline std::string node_type_to_string(node_type type) {
 
 struct node {
     node_type type;
+    std::string name; // Optionally present
     union {
         std::vector<node> children;
-        // There may be more things in this union later
     };
 };
 
@@ -90,7 +92,7 @@ public:
     node simpleGoal();
     node term();
     node list();
-    node elements();
+    std::vector<node> elements();
 
     // Helper functions:
 
