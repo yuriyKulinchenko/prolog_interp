@@ -4,7 +4,7 @@
 #include "parser.h"
 
 int main() {
-    std::string input = "p :- q, r; s, !, t.";
+    std::string input = "p :- [a,b,c].";
     lexer lexer {input};
     auto vec = lexer.run();
     parser parser {vec};

@@ -130,6 +130,7 @@ node parser::list() {
         tail->emplace_back(node_type::TERM, "[]");
     }
 
+    consume(token_type::SQUARE_CLOSED, "ERROR: unmatched square bracket");
     return head;
 }
 
@@ -180,23 +181,33 @@ bool parser::at_end() {
     return token_vector.size() == i;
 }
 
-void lisp_list_log(std::ostream& stream, std::string& identifier, std::vector<node>& nodes) {
-        stream << '(';
-        stream << identifier;
-        if (!nodes.empty()) {
-            for (auto & node : nodes) {
-                stream << ", " << node;
-            }
+std::ostream& bracketed_elements_log(std::ostream& stream, std::vector<node>& nodes) {
+    stream << '(';
+    if (!nodes.empty()) {
+        stream << nodes[0];
+        for (int i = 1; i < nodes.size(); i++) {
+            stream << ", " << nodes[i];
         }
-        stream << ')';
+    }
+    return stream << ')';
+}
+
+std::ostream& lisp_list_log(std::ostream& stream, std::string& identifier, std::vector<node>& nodes) {
+    stream << '('<< identifier;
+    for (auto & node : nodes) stream << ", " << node;
+    return stream << ')';
 }
 
 std::ostream& operator<<(std::ostream& stream, node& node) {
-    if (node.type == node_type::VARIABLE || node.type == node_type::TERM) {
-        if (node.type == node_type::TERM && node.children.empty()) {
-             return stream << node.name;
+    if (node.type == node_type::VARIABLE) {
+        return stream << node.name;
+    }
+
+    if (node.type == node_type::TERM) {
+        stream << node.name;
+        if (node.children.size() > 1) {
+            bracketed_elements_log(stream, node.children);
         }
-        lisp_list_log(stream, node.name, node.children);
         return stream;
     }
 
