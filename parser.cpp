@@ -194,12 +194,18 @@ void lisp_list_log(std::ostream& stream, std::string& identifier, std::vector<no
 std::ostream& operator<<(std::ostream& stream, node& node) {
     if (node.type == node_type::VARIABLE || node.type == node_type::TERM) {
         if (node.type == node_type::TERM && node.children.empty()) {
-            return stream << node.name;
+             return stream << node.name;
         }
         lisp_list_log(stream, node.name, node.children);
-    } else {
-        std::string identifier = node_type_to_string(node.type);
-        lisp_list_log(stream, identifier, node.children);
+        return stream;
     }
+
+    if (node.type == node_type::CUT) {
+        return stream << '!';
+    }
+
+    std::string identifier = node_type_to_short_string(node.type);
+    lisp_list_log(stream, identifier, node.children);
+
     return stream;
 }

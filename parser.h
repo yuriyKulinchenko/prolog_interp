@@ -68,6 +68,16 @@ inline std::string node_type_to_string(node_type type) {
     return "UNKNOWN";
 }
 
+inline std::string node_type_to_short_string(node_type type) {
+    switch (type) {
+        using enum node_type;
+        case DISJUNCTION: return "OR";
+        case CONJUNCTION: return "AND";
+        default: return node_type_to_string(type);
+
+    }
+}
+
 struct node {
     explicit node(node_type type): type(type) {}
     node(node_type type, std::string name):
