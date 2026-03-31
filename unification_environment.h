@@ -48,6 +48,9 @@ struct env_index {
 };
 
 struct prolog_term {
+    explicit prolog_term():
+        type(), index() {};
+
     prolog_term(prolog_term_type type, int index):
         type(type), index(index) {}
 
@@ -75,9 +78,15 @@ private:
     void unify_unbound_variable_term(int i, int j);
     env_index resolve_bound_variable(int variable_index);
 
+    void unwind_variable_vector(int i);
+    void unwind_term_vector(int i);
     void unwind_trail(int i);
 
+    std::ostream& log_variables(std::ostream& stream);
+    std::ostream& log_term(std::ostream& stream, env_index i);
+
     std::unordered_map<std::string, int> name_variable_map;
+    std::unordered_map<int, std::string> variable_name_map;
     std::vector<prolog_variable> variable_vector;
     std::vector<prolog_term> term_vector;
     std::unordered_map<std::string, int> identifier_map;

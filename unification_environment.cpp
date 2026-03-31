@@ -40,6 +40,7 @@ int unification_environment::add_variable(std::string& variable_name) {
     variable_vector.emplace_back();
     int variable_index = static_cast<int>(variable_vector.size()) - 1;
     name_variable_map[variable_name] = variable_index;
+    variable_name_map[variable_index] = variable_name;
     return variable_index;
 }
 
@@ -138,6 +139,8 @@ bool unification_environment::unify_terms(int i, int j) {
 
 // unify_unbound_variables(i, j) binds i, leaves j free
 void unification_environment::unify_unbound_variables(int i, int j) {
+    // If the variables are the same, do nothing:
+    if (i == j) return;
     variable_vector[i] = {prolog_variable_type::BOUND_VARIABLE, j};
     trail.push_back(i);
 }
@@ -149,8 +152,7 @@ void unification_environment::unify_unbound_variable_term(int i, int j) {
 }
 
 void unification_environment::unwind_trail(int i) {
-    // Unwind to i:
-    if (trail.size() == 0) return;
+    if (trail.empty()) return;
     for (int j = static_cast<int>(trail.size()) - 1; j >= i; j--) {
         int variable_index = trail[j];
         variable_vector[variable_index].type = prolog_variable_type::UNBOUND;
@@ -159,6 +161,23 @@ void unification_environment::unwind_trail(int i) {
     trail.resize(i);
 }
 
+void unification_environment::unwind_variable_vector(int i) {
+    if (variable_vector.empty()) return;
+    for (int j = static_cast<int>(variable_vector.size()) - 1; j >= i; j--) {
+        auto it = variable_name_map.find(j);
+        if (it != variable_name_map.end()) {
+            std::string name = it->second;
+            variable_name_map.erase(it);
+            name_variable_map.erase(name);
+        }
+    }
+
+    variable_vector.resize(i);
+}
+
+void unification_environment::unwind_term_vector(int i) {
+    term_vector.resize(i);
+}
 
 void unification_environment::test_unification() {
     std::string s1, s2;
@@ -181,5 +200,55 @@ void unification_environment::test_unification() {
     std::cout << (unify(i1, i2) ?
     "Unification succeeded" : "Unification failed") << '\n';
 
+    log_variables(std::cout);
+    unwind_variable_vector(0);
+    unwind_term_vector(0);
     unwind_trail(0);
 }
+
+std::ostream &unification_environment::log_term(std::ostream& stream, env_index i) {
+
+    // Identify what the variable is bound to:
+
+    if (i.type == prolog_term_type::VARIABLE)
+        i = resolve_bound_variable(i.index);
+
+    // If term is still a variable:
+
+    if (i.type == prolog_term_type::VARIABLE) {
+        if (variable_name_map.contains(i.index)) {
+            stream << variable_name_map[i.index];
+            return stream;
+        }
+
+        stream << "V" << i.index;
+        return stream;
+    }
+
+    // If raw term:
+
+    prolog_term& term = term_vector[i.index];
+    stream << identifier_vector[term.index];
+
+    if (!term.children.empty()) {
+        stream << '(';
+        log_term(stream, term.children[0]);
+        for (int j = 1; j < term.children.size(); j++) {
+            log_term(stream ,term.children[j]);
+        }
+        stream << ')';
+    }
+
+    return stream;
+}
+
+
+std::ostream& unification_environment::log_variables(std::ostream &stream) {
+    for (auto& [name, index]: name_variable_map) {
+        stream << name << " = ";
+        log_term(stream, {prolog_term_type::VARIABLE, index});
+        stream << '\n';
+    }
+    return stream;
+}
+
