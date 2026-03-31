@@ -61,11 +61,11 @@ inline std::ostream& operator<<(std::ostream& stream, token& token) {
 
 class lexer {
 public:
-    explicit lexer(std::string source_code):
+    explicit lexer(std::string&& source_code):
     source_code(std::move(source_code)), i(0) {}
 
     std::vector<token> run();
-
+    void reset(std::string&& source_code);
 
 private:
     char peek();

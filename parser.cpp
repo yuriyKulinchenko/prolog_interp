@@ -10,7 +10,14 @@ node create_transparent_list(node_type type, std::vector<node> nodes) {
 }
 
 std::vector<node> parser::run() {
+    // There could be more to this later
     return program();
+}
+
+void parser::reset(std::vector<token>&& token_vector) {
+    this->token_vector = std::move(token_vector);
+    goal_vector.clear();
+    i = 0;
 }
 
 std::vector<node> parser::program() {

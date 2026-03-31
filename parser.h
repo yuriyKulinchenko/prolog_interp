@@ -79,6 +79,7 @@ inline std::string node_type_to_short_string(node_type type) {
 }
 
 struct node {
+    node() = default;
     explicit node(node_type type): type(type) {}
     node(node_type type, std::string name):
         type(type), name(std::move(name)) {}
@@ -94,12 +95,12 @@ struct node {
 
 
 class parser {
-
 public:
-
-    parser(std::vector<token>& token_list): token_vector(token_list), i(0) {}
+    parser(std::vector<token>&& token_vector): token_vector(std::move(token_vector)), i(0) {}
 
     std::vector<node> run();
+    void reset(std::vector<token>&& token_vector);
+
 
     std::vector<node> program();
     node clause();
@@ -113,6 +114,7 @@ public:
 
     // Helper functions:
 
+private:
     token& peek();
     token& next();
     token& advance();
@@ -122,9 +124,8 @@ public:
     bool match(token_type type);
     bool at_end();
 
-private:
     int i;
-    std::vector<token>& token_vector;
+    std::vector<token> token_vector;
     std::vector<node> goal_vector;
 };
 

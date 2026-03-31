@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <unordered_map>
-#include "helper.h"
 #include "parser.h"
 
 /*
@@ -61,6 +60,8 @@ private:
     int add_term(node& node);
     int add_variable(std::string& variable_name);
     int add_identifier(const std::string& name);
+    bool unify(int i, int j);
+    void test_unification();
 
     std::unordered_map<std::string, int> name_variable_map;
     std::vector<prolog_variable> variable_vector;

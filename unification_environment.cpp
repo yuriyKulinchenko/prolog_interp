@@ -3,6 +3,7 @@
 //
 
 #include "unification_environment.h"
+#include <iostream>
 
 std::pair<prolog_term_type, int> unification_environment::add_node(node& node) {
     switch (node.type) {
@@ -53,4 +54,19 @@ int unification_environment::add_identifier(const std::string &name) {
         identifier_map[name] = index;
     }
     return index;
+}
+
+void unification_environment::test_unification() {
+    std::string s1, s2;
+    std::cout << "Enter first term: ";
+    std::cin >> s1;
+    std::cout << "Enter second term: ";
+    std::cin >> s2;
+
+    // lexer lexer{s1};
+    // lexer.run();
+    // parser parser{lexer.run()};
+    // lexer lexer;
+    //
+    // node n1 =
 }

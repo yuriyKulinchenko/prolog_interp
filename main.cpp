@@ -19,9 +19,12 @@ std::string read_file(const std::string& path) {
 
 int main() {
     std::string input = read_file("../source.txt");
-    lexer lexer {input};
+    lexer lexer {std::move(input)};
     auto vec = lexer.run();
-    parser parser {vec};
+    parser parser {std::move(vec)};
     auto clauses = parser.run();
-    std::cout << clauses;
+
+    for (auto& clause: clauses) {
+        std::cout << clause << '\n';
+    }
 }

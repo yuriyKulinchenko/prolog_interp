@@ -84,6 +84,13 @@ std::vector<token> lexer::run() {
     return token_vector;
 }
 
+void lexer::reset(std::string&& source_code) {
+    this->source_code = std::move(source_code);
+    token_vector.clear();
+    i = 0;
+}
+
+
 char lexer::peek() {
     return source_code[i];
 }
