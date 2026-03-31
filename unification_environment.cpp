@@ -206,7 +206,9 @@ void unification_environment::test_unification() {
     unwind_trail(0);
 }
 
-std::ostream &unification_environment::log_term(std::ostream& stream, env_index i) {
+std::ostream &unification_environment::log_term(std::ostream& stream, env_index i, int depth) {
+
+    if (depth == 0) return stream << "...";
 
     // Identify what the variable is bound to:
 
@@ -228,13 +230,56 @@ std::ostream &unification_environment::log_term(std::ostream& stream, env_index 
     // If raw term:
 
     prolog_term& term = term_vector[i.index];
+    std::string& identifier = identifier_vector[term.index];
+
+    // Dedicated list handling:
+
+    if (identifier == ".") {
+        stream << '[';
+        // Progress through the list:
+        log_term(stream, term.children[0], depth - 1);
+        prolog_term* current_term = &term;
+        while (depth > 0) {
+            depth--;
+            env_index next_index = current_term->children[1];
+            if (next_index.type == prolog_term_type::VARIABLE) {
+                next_index = resolve_bound_variable(next_index.index);
+            }
+
+            if (next_index.type == prolog_term_type::VARIABLE) {
+                stream << "| ";
+                log_term(stream, next_index, depth);
+                return stream << ']';
+            }
+
+            // Raw term:
+            current_term = &term_vector[next_index.index];
+            std::string& id = identifier_vector[current_term->index];
+
+            if (id == "[]") {
+                return stream << ']';
+            }
+
+            if (id == ".") {
+                stream << ", ";
+                log_term(stream, current_term->children[0], depth);
+            } else {
+                stream << "| ";
+                log_term(stream, next_index, depth);
+                return stream << ']';
+            }
+        }
+        return stream << ']';
+    }
+
     stream << identifier_vector[term.index];
 
     if (!term.children.empty()) {
         stream << '(';
-        log_term(stream, term.children[0]);
+        log_term(stream, term.children[0], depth - 1);
         for (int j = 1; j < term.children.size(); j++) {
-            log_term(stream ,term.children[j]);
+            stream << ", ";
+            log_term(stream ,term.children[j], depth - 1);
         }
         stream << ')';
     }

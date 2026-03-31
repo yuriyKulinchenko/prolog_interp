@@ -83,7 +83,7 @@ private:
     void unwind_trail(int i);
 
     std::ostream& log_variables(std::ostream& stream);
-    std::ostream& log_term(std::ostream& stream, env_index i);
+    std::ostream& log_term(std::ostream& stream, env_index i, int depth = max_logging_depth);
 
     std::unordered_map<std::string, int> name_variable_map;
     std::unordered_map<int, std::string> variable_name_map;
@@ -91,6 +91,8 @@ private:
     std::vector<prolog_term> term_vector;
     std::unordered_map<std::string, int> identifier_map;
     std::vector<std::string> identifier_vector;
+
+    static constexpr int max_logging_depth = 20;
 
     // For the operation of the interpreter:
     std::vector<int> trail;
