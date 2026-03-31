@@ -47,7 +47,7 @@ struct prolog_term {
 
     prolog_term_type type;
     int index; // Doubles as variable index OR identifier index
-    std::vector<prolog_term> children; // Empty if variable
+    std::vector<int> children; // Empty if variable
 };
 
 class unification_environment {
@@ -55,37 +55,12 @@ public:
     // Adds the term specified by the passed node to the term_vector
     // Returns a pair specifying if the term is a raw term or variable, and the corresponding index
 
-    std::pair<prolog_term_type, int> add_node(node& node) {
-        switch (node.type) {
-            using enum node_type;
-            case TERM: return {prolog_term_type::TERM, add_term(node)};
-            case VARIABLE: return {prolog_term_type::VARIABLE, add_variable(node.name)};
-            default: throw std::logic_error("Passed node is not a term or variable");
-        }
-    }
+    std::pair<prolog_term_type, int> add_node(node& node);
 
 private:
-
-    int add_term(node& node) {
-        // Few challenges here:
-        // - Figure out identifier map
-        // - Recursively map children
-        // - Form constructed term
-        // - Return index
-
-
-    }
-
-    int add_variable(std::string& variable_name) {
-        if (name_variable_map.contains(variable_name)) {
-            return name_variable_map[variable_name];
-        }
-        // Otherwise, this name is not yet mapped:
-        variable_vector.emplace_back();
-        int variable_index = static_cast<int>(variable_vector.size()) - 1;
-        name_variable_map[variable_name] = variable_index;
-        return variable_index;
-    }
+    int add_term(node& node);
+    int add_variable(std::string& variable_name);
+    int add_identifier(const std::string& name);
 
     std::unordered_map<std::string, int> name_variable_map;
     std::vector<prolog_variable> variable_vector;
