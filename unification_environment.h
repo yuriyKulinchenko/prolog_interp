@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include "parser.h"
 
+#define UNIFICATION_DEBUG
+
 /*
 
 Current purpose of unification_environment class is defined as follows (for now):
@@ -40,13 +42,18 @@ enum class prolog_term_type {
     VARIABLE, TERM
 };
 
+struct env_index {
+    prolog_term_type type;
+    int index;
+};
+
 struct prolog_term {
     prolog_term(prolog_term_type type, int index):
         type(type), index(index) {}
 
     prolog_term_type type;
     int index; // Doubles as variable index OR identifier index
-    std::vector<int> children; // Empty if variable
+    std::vector<env_index> children; // Empty if variable
 };
 
 class unification_environment {
@@ -54,14 +61,14 @@ public:
     // Adds the term specified by the passed node to the term_vector
     // Returns a pair specifying if the term is a raw term or variable, and the corresponding index
 
-    std::pair<prolog_term_type, int> add_node(node& node);
+    env_index add_node(node& node);
+    void test_unification();
 
 private:
     int add_term(node& node);
     int add_variable(std::string& variable_name);
     int add_identifier(const std::string& name);
-    bool unify(int i, int j);
-    void test_unification();
+    bool unify(env_index i, env_index j);
 
     std::unordered_map<std::string, int> name_variable_map;
     std::vector<prolog_variable> variable_vector;

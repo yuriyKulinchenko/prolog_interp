@@ -3,6 +3,7 @@
 #include "helper.h"
 #include  "lexer.h"
 #include "parser.h"
+#include "unification_environment.h"
 
 std::string read_file(const std::string& path) {
     std::ifstream file(path, std::ios::binary | std::ios::ate);
@@ -18,13 +19,8 @@ std::string read_file(const std::string& path) {
 }
 
 int main() {
-    std::string input = read_file("../source.txt");
-    lexer lexer {std::move(input)};
-    auto vec = lexer.run();
-    parser parser {std::move(vec)};
-    auto clauses = parser.run();
-
-    for (auto& clause: clauses) {
-        std::cout << clause << '\n';
+    unification_environment environment {};
+    for (;;) {
+        environment.test_unification();
     }
 }

@@ -5,7 +5,7 @@
 #include "unification_environment.h"
 #include <iostream>
 
-std::pair<prolog_term_type, int> unification_environment::add_node(node& node) {
+env_index unification_environment::add_node(node& node) {
     switch (node.type) {
         using enum node_type;
         case TERM: return {prolog_term_type::TERM, add_term(node)};
@@ -23,7 +23,7 @@ int unification_environment::add_term(node &node_instance) {
     // - Recursively map children
 
     for (node& child: node_instance.children) {
-        term.children.push_back(add_term(child));
+        term.children.push_back(add_node(child));
     }
 
     // - Form constructed term
@@ -56,6 +56,35 @@ int unification_environment::add_identifier(const std::string &name) {
     return index;
 }
 
+bool unification_environment::unify(env_index i, env_index j) {
+    using enum prolog_term_type;
+    // For now, unification rules will not take into account variables:
+    if (i.type != TERM || j.type != TERM) return false;
+    prolog_term& t1 = term_vector[i.index];
+    prolog_term& t2 = term_vector[j.index];
+    if (t1.index != t2.index) {
+#ifdef UNIFICATION_DEBUG
+        std::cout << "Identifiers: " << identifier_vector[t1.index]
+        << ", " << identifier_vector[t2.index] << " do not match.\n";
+#endif
+        return false;
+    }
+
+    if (t1.children.size() != t2.children.size()) {
+#ifdef UNIFICATION_DEBUG
+        std::cout << "Arity of " << t1.children.size()
+        << "and " << t2.children.size() << " do not match.\n";
+#endif
+        return false;
+    }
+
+    for (int n = 0; n < t1.children.size(); n++) {
+        if (!unify(t1.children[n], t2.children[n])) return false;
+    }
+    return true;
+}
+
+
 void unification_environment::test_unification() {
     std::string s1, s2;
     std::cout << "Enter first term: ";
@@ -63,10 +92,17 @@ void unification_environment::test_unification() {
     std::cout << "Enter second term: ";
     std::cin >> s2;
 
-    // lexer lexer{s1};
-    // lexer.run();
-    // parser parser{lexer.run()};
-    // lexer lexer;
-    //
-    // node n1 =
+    lexer lexer {std::move(s1)};
+    parser parser{lexer.run()};
+    node n1 = parser.term();
+
+    lexer.reset(std::move(s2));
+    parser.reset(lexer.run());
+    node n2 = parser.term();
+
+    env_index i1 = add_node(n1);
+    env_index i2 = add_node(n2);
+
+    std::cout << (unify(i1, i2) ?
+    "Unification succeeded" : "Unification failed") << '\n';
 }

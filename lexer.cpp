@@ -68,7 +68,7 @@ std::vector<token> lexer::run() {
             default: {
                 // Either variable or symbol:
                 i--;
-                if (is_alpha_lower(c)) {
+                if (is_alpha_lower(c) || is_num(c)) {
                     handle_string(SYMBOL);
                 } else if (is_alpha_capital(c)) {
                     handle_string(VARIABLE);
