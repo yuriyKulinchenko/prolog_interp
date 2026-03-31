@@ -68,13 +68,21 @@ private:
     int add_term(node& node);
     int add_variable(std::string& variable_name);
     int add_identifier(const std::string& name);
+
     bool unify(env_index i, env_index j);
+    bool unify_terms(int i, int j);
+    void unify_unbound_variables(int i,int j);
+    void unify_unbound_variable_term(int i, int j);
+    env_index resolve_bound_variable(int variable_index);
 
     std::unordered_map<std::string, int> name_variable_map;
     std::vector<prolog_variable> variable_vector;
     std::vector<prolog_term> term_vector;
     std::unordered_map<std::string, int> identifier_map;
     std::vector<std::string> identifier_vector;
+
+    // For the operation of the interpreter:
+    std::vector<int> trail;
 };
 
 

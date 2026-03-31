@@ -56,12 +56,58 @@ int unification_environment::add_identifier(const std::string &name) {
     return index;
 }
 
+env_index unification_environment::resolve_bound_variable(int variable_index) {
+    using enum prolog_term_type;
+    using enum prolog_variable_type;
+    prolog_variable& variable = variable_vector[variable_index];
+
+    if (variable.type == BOUND_TERM)
+        return {TERM, variable.index};
+
+    if (variable.type == BOUND_VARIABLE)
+        return resolve_bound_variable(variable.index);
+
+    return {VARIABLE, variable_index};
+}
+
+
 bool unification_environment::unify(env_index i, env_index j) {
     using enum prolog_term_type;
-    // For now, unification rules will not take into account variables:
-    if (i.type != TERM || j.type != TERM) return false;
-    prolog_term& t1 = term_vector[i.index];
-    prolog_term& t2 = term_vector[j.index];
+    using enum prolog_variable_type;
+
+    // If a variable is bound, you can keep going deeper:
+    if (i.type == VARIABLE) {
+        i = resolve_bound_variable(i.index);
+    }
+
+    if (j.type == VARIABLE) {
+        j = resolve_bound_variable(j.index);
+    }
+
+    // Term unification:
+    if (i.type == TERM && j.type == TERM) {
+        return unify_terms(i.index, j.index);
+    }
+
+    // Variable unification:
+    if (i.type == VARIABLE && j.type == VARIABLE) {
+        unify_unbound_variables(i.index, j.index);
+        return true;
+    }
+
+    // Variable + term unification:
+    if (i.type == VARIABLE) {
+        unify_unbound_variable_term(i.index, j.index);
+        return true;
+    }
+
+    unify_unbound_variable_term(j.index, i.index);
+    return true;
+}
+
+bool unification_environment::unify_terms(int i, int j) {
+    prolog_term& t1 = term_vector[i];
+    prolog_term& t2 = term_vector[j];
     if (t1.index != t2.index) {
 #ifdef UNIFICATION_DEBUG
         std::cout << "Identifiers: " << identifier_vector[t1.index]
@@ -73,7 +119,7 @@ bool unification_environment::unify(env_index i, env_index j) {
     if (t1.children.size() != t2.children.size()) {
 #ifdef UNIFICATION_DEBUG
         std::cout << "Arity of " << t1.children.size()
-        << "and " << t2.children.size() << " do not match.\n";
+        << " and " << t2.children.size() << " do not match.\n";
 #endif
         return false;
     }
@@ -81,9 +127,21 @@ bool unification_environment::unify(env_index i, env_index j) {
     for (int n = 0; n < t1.children.size(); n++) {
         if (!unify(t1.children[n], t2.children[n])) return false;
     }
+
     return true;
 }
 
+// unify_unbound_variables(i, j) binds i, leaves j free
+void unification_environment::unify_unbound_variables(int i, int j) {
+    variable_vector[i] = {prolog_variable_type::BOUND_VARIABLE, j};
+    trail.push_back(i);
+}
+
+// unify_unbound_variable_term(i, j) binds i to the term j
+void unification_environment::unify_unbound_variable_term(int i, int j) {
+    variable_vector[i] = {prolog_variable_type::BOUND_TERM, j};
+    trail.push_back(i);
+}
 
 void unification_environment::test_unification() {
     std::string s1, s2;
