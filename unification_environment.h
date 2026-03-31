@@ -75,6 +75,8 @@ private:
     void unify_unbound_variable_term(int i, int j);
     env_index resolve_bound_variable(int variable_index);
 
+    void unwind_trail(int i);
+
     std::unordered_map<std::string, int> name_variable_map;
     std::vector<prolog_variable> variable_vector;
     std::vector<prolog_term> term_vector;

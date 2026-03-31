@@ -75,6 +75,8 @@ bool unification_environment::unify(env_index i, env_index j) {
     using enum prolog_term_type;
     using enum prolog_variable_type;
 
+    int trail_index = trail.size();
+
     // If a variable is bound, you can keep going deeper:
     if (i.type == VARIABLE) {
         i = resolve_bound_variable(i.index);
@@ -86,7 +88,10 @@ bool unification_environment::unify(env_index i, env_index j) {
 
     // Term unification:
     if (i.type == TERM && j.type == TERM) {
-        return unify_terms(i.index, j.index);
+        bool success = unify_terms(i.index, j.index);
+        if (success) return true;
+        unwind_trail(trail_index);
+        return false;
     }
 
     // Variable unification:
@@ -143,6 +148,18 @@ void unification_environment::unify_unbound_variable_term(int i, int j) {
     trail.push_back(i);
 }
 
+void unification_environment::unwind_trail(int i) {
+    // Unwind to i:
+    if (trail.size() == 0) return;
+    for (int j = static_cast<int>(trail.size()) - 1; j >= i; j--) {
+        int variable_index = trail[j];
+        variable_vector[variable_index].type = prolog_variable_type::UNBOUND;
+    }
+
+    trail.resize(i);
+}
+
+
 void unification_environment::test_unification() {
     std::string s1, s2;
     std::cout << "Enter first term: ";
@@ -163,4 +180,6 @@ void unification_environment::test_unification() {
 
     std::cout << (unify(i1, i2) ?
     "Unification succeeded" : "Unification failed") << '\n';
+
+    unwind_trail(0);
 }
