@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include "parser.h"
+#include "prolog_term.h"
 
 #define UNIFICATION_DEBUG
 
@@ -23,74 +24,53 @@ What does an environment look like?
 Another facility: conversion from AST to term
 */
 
-enum class prolog_variable_type {
-    UNBOUND, BOUND_VARIABLE, BOUND_TERM
-};
 
-struct prolog_variable {
-    explicit prolog_variable():
-        type(prolog_variable_type::UNBOUND), index(0) {}
+/*
 
-    prolog_variable(prolog_variable_type type, int index):
-        type(type), index(index) {}
+Current problem: Store and instantiate goals
+- Goals are stored as a head and a body
+- Suppose that I have the goal: p(X,Y) :- q(X), r(Y)
+- When I want to instantiate p(A,B), I want to create a copy of the goal:
+- p(v1,v2) :- q(v1), r(v2)
+- And then attempt to unify p(A,B) with p(v1,v2)
+- I can then add q(v1), r(v2) to the goal stack
+- When adding a goal, the name mapping should be cleared
 
-    prolog_variable_type type;
-    int index; // Useful if bound
-};
-
-enum class prolog_term_type {
-    VARIABLE, TERM
-};
-
-struct env_index {
-    prolog_term_type type;
-    int index;
-};
-
-struct prolog_term {
-    explicit prolog_term():
-        type(), index() {};
-
-    prolog_term(prolog_term_type type, int index):
-        type(type), index(index) {}
-
-    prolog_term_type type;
-    int index; // Doubles as variable index OR identifier index
-    std::vector<env_index> children; // Empty if variable
-};
+*/
 
 class unification_environment {
 public:
     // Adds the term specified by the passed node to the term_vector
     // Returns a pair specifying if the term is a raw term or variable, and the corresponding index
 
-    env_index add_node(node& node);
+    int add_node(node& node);
     void test_unification();
 
 private:
-    int add_term(node& node);
+    int add_structure(node& node_instance);
     int add_variable(std::string& variable_name);
     int add_identifier(const std::string& name);
 
-    bool unify(env_index i, env_index j);
-    bool unify_terms(int i, int j);
+    bool unify(int i, int j);
+    bool unify_structures(int i, int j);
     void unify_unbound_variables(int i,int j);
     void unify_unbound_variable_term(int i, int j);
-    env_index resolve_bound_variable(int variable_index);
+    int resolve_bound_variable(int variable_index);
 
-    void unwind_variable_vector(int i);
     void unwind_term_vector(int i);
     void unwind_trail(int i);
 
     std::ostream& log_variables(std::ostream& stream);
-    std::ostream& log_term(std::ostream& stream, env_index i, int depth = max_logging_depth);
+    std::ostream& log_term(std::ostream& stream, int term_index, int depth = max_logging_depth);
+    std::ostream& log_structure(std::ostream& stream, int structure_index, int depth);
+    std::ostream& log_variable(std::ostream& stream, int variable_index, int depth);
+
+    std::vector<prolog_term> term_vector;
+    std::vector<std::string> identifier_vector;
 
     std::unordered_map<std::string, int> name_variable_map;
     std::unordered_map<int, std::string> variable_name_map;
-    std::vector<prolog_variable> variable_vector;
-    std::vector<prolog_term> term_vector;
     std::unordered_map<std::string, int> identifier_map;
-    std::vector<std::string> identifier_vector;
 
     static constexpr int max_logging_depth = 20;
 
