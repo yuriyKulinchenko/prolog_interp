@@ -77,7 +77,7 @@ private:
     bool match(char c);
     bool at_end();
     void emit_token(token_type type, const std::string& identifier = "");
-    void handle_string(token_type type);
+    token& handle_string(token_type type);
     static bool is_alpha_lower(char c);
     static bool is_alpha_capital(char c);
     static bool is_alpha(char c);

@@ -69,7 +69,8 @@ std::vector<token> lexer::run() {
                 // Either variable or symbol:
                 i--;
                 if (is_alpha_lower(c) || is_num(c)) {
-                    handle_string(SYMBOL);
+                    token& t = handle_string(SYMBOL);
+                    if (t.identifier == "_") t.type = VARIABLE;
                 } else if (is_alpha_capital(c)) {
                     handle_string(VARIABLE);
                 }
@@ -158,12 +159,13 @@ void lexer::emit_token(token_type type, const std::string& identifier) {
     token_vector.emplace_back(type, identifier);
 }
 
-void lexer::handle_string(token_type type) {
+token& lexer::handle_string(token_type type) {
     int start = i;
     while(is_alphanum(peek())) {
         advance();
     }
     token_vector.emplace_back(type, source_code.substr(start, i-start));
+    return token_vector[token_vector.size() - 1];
 }
 
 

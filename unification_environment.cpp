@@ -33,11 +33,16 @@ int unification_environment::add_variable(std::string& variable_name) {
     if (name_variable_map.contains(variable_name)) {
         return name_variable_map[variable_name];
     }
-    // Otherwise, this name is not yet mapped:
+    // Otherwise, this name is not yet mapped, or is anonymous:
     term_vector.emplace_back(prolog_term_type::VARIABLE);
     int variable_index = static_cast<int>(term_vector.size()) - 1;
-    name_variable_map[variable_name] = variable_index;
-    variable_name_map[variable_index] = variable_name;
+
+    if (variable_name == "_") {
+        term_vector[variable_index].as.variable.type = prolog_variable_type::ANONYMOUS;
+    } else {
+        name_variable_map[variable_name] = variable_index;
+        variable_name_map[variable_index] = variable_name;
+    }
     return variable_index;
 }
 
@@ -58,21 +63,20 @@ int unification_environment::resolve_bound_variable(int variable_index) {
     prolog_term& term = term_vector[variable_index];
 
     // Variable index may be a structure:
-    if (term.type == prolog_term_type::STRUCTURE) return variable_index;
+    if (term.is_structure() || term.is_anonymous_variable()) return variable_index;
 
     // Variable index may be unbound:
-    prolog_variable& variable = term.as.variable;
-    if (variable.type == prolog_variable_type::UNBOUND) {
+    if (term.is_unbound_variable()) {
         return variable_index;
     }
 
     // If variable is bound, follow it:
-    return resolve_bound_variable(variable.index);
+    return resolve_bound_variable(term.as.variable.index);
 }
 
 
 bool unification_environment::unify(int i, int j) {
-    int trail_index = trail.size();
+    int trail_index = static_cast<int>(trail.size());
 
     // If a variable is bound, you can keep going deeper:
     i = resolve_bound_variable(i);
@@ -80,6 +84,10 @@ bool unification_environment::unify(int i, int j) {
 
     prolog_term& i_term = term_vector[i];
     prolog_term& j_term = term_vector[j];
+
+    if (i_term.is_anonymous_variable() || j_term.is_anonymous_variable()) {
+        return true;
+    }
 
     // Structure unification:
     if (i_term.is_structure() && j_term.is_structure()) {
@@ -159,8 +167,7 @@ void unification_environment::unwind_term_vector(int i) {
     if (term_vector.empty()) return;
     for (int j = static_cast<int>(term_vector.size()) - 1; j >= i; j--) {
         if (term_vector[j].is_variable()) {
-            auto it = variable_name_map.find(j);
-            if (it != variable_name_map.end()) {
+            if (auto it = variable_name_map.find(j); it != variable_name_map.end()) {
                 std::string name = it->second;
                 variable_name_map.erase(it);
                 name_variable_map.erase(name);
