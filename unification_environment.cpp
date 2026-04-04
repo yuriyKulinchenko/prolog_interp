@@ -62,6 +62,78 @@ int unification_environment::add_clause(node &node) {
     return clause_index;
 }
 
+int unification_environment::duplicate_clause(int clause_index) {
+    // Duplicates a clause, returns its index:
+    int duplicated_clause_index = static_cast<int>(clause_vector.size());
+    prolog_clause& original_clause = clause_vector[clause_index];
+    std::unordered_map<int, int> variable_map{};
+    int duplicated_head = duplicate_term(original_clause.head, variable_map);
+    int duplicated_body = original_clause.body == -1 ? -1 : duplicate_term(original_clause.body, variable_map);
+    clause_vector.emplace_back(duplicated_head, duplicated_body);
+    std::cout << "Final variable map: " << variable_map << '\n';
+    return duplicated_clause_index;
+}
+
+int unification_environment::duplicate_term(int index, std::unordered_map<int, int> &variable_map) {
+
+    prolog_term& term = term_vector[index];
+
+    if (term.is_variable()) {
+
+#ifdef UNIFICATION_DEBUG
+        if (term.as.variable.type == prolog_variable_type::BOUND) {
+            log_term(std::cerr, index) << '\n';
+            throw std::logic_error("ERROR: Cannot duplicate bound variable");
+        }
+#endif
+
+        return duplicate_variable(index, variable_map);
+
+    }
+
+    return duplicate_structure(index, variable_map);
+}
+
+int unification_environment::duplicate_structure(int index, std::unordered_map<int, int>& variable_map) {
+    const prolog_structure& original = get_structure(index);
+
+    int original_identifier_index = original.identifier_index;
+    std::vector<int> original_children = original.children;
+
+    std::vector<int> duplicated_children;
+    duplicated_children.reserve(original_children.size());
+
+    for (int child : original_children) {
+        duplicated_children.push_back(duplicate_term(child, variable_map));
+    }
+
+    int duplicated_structure_index = static_cast<int>(term_vector.size());
+    term_vector.emplace_back(prolog_term_type::STRUCTURE);
+
+    prolog_structure& duplicated = term_vector[duplicated_structure_index].as.structure;
+    duplicated.identifier_index = original_identifier_index;
+    duplicated.children = std::move(duplicated_children);
+
+    return duplicated_structure_index;
+}
+
+int unification_environment::duplicate_variable(int index, std::unordered_map<int, int>& variable_map) {
+    // If anonymous, index can be re-used:
+    prolog_variable& variable = term_vector[index].as.variable;
+
+    if (variable.type == prolog_variable_type::ANONYMOUS) return index;
+
+    // If mapping exists:
+    if (variable_map.contains(index)) return variable_map[index];
+
+    // If mapping does not exist:
+    int duplicated_variable_index = static_cast<int>(term_vector.size());
+    term_vector.emplace_back(prolog_term_type::VARIABLE);
+    variable_map[index] = duplicated_variable_index;
+    return duplicated_variable_index;
+}
+
+
 void unification_environment::add_clauses(std::vector<node>& nodes) {
     for (auto& node: nodes) {
         add_clause(node);
@@ -294,6 +366,26 @@ void unification_environment::test_clauses(const std::string& path) {
     std::cout << "Identifier vector: " << identifier_vector << '\n';
     std::cout << "" << identifier_clause_vector << '\n';
 }
+
+void unification_environment::test_duplication(const std::string &path) {
+    std::string s = read_file(path);
+    lexer lexer(std::move(s));
+    parser parser(lexer.run());
+
+    std::vector<node> clauses = parser.program();
+    add_clauses(clauses);
+
+    // Create one copy of each clause, and add it to the set of clauses:
+
+    int n = static_cast<int>(clause_vector.size());
+
+    for (int i = 0; i < n; i++) {
+        duplicate_clause(i);
+    }
+
+    log_clauses(std::cout);
+}
+
 
 
 std::ostream &unification_environment::log_term(std::ostream& stream, int i, int depth) {

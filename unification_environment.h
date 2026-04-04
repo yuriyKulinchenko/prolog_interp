@@ -49,6 +49,7 @@ public:
 
     void test_unification();
     void test_clauses(const std::string& path);
+    void test_duplication(const std::string& path);
 
 private:
     prolog_structure& get_structure(int index);
@@ -57,6 +58,10 @@ private:
     int add_structure(node& node_instance);
     int add_variable(std::string& variable_name);
     int add_identifier(const std::string& name);
+    int duplicate_clause(int clause_index);
+    int duplicate_term(int index, std::unordered_map<int, int>& variable_map);
+    int duplicate_structure(int index, std::unordered_map<int, int>& variable_map);
+    int duplicate_variable(int index, std::unordered_map<int, int>& variable_map);
 
     bool unify(int i, int j);
     bool unify_structures(int i, int j);

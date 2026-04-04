@@ -6,5 +6,5 @@
 
 int main() {
     unification_environment environment {};
-    environment.test_clauses("../source.txt");
+    environment.test_duplication("../source.txt");
 }
