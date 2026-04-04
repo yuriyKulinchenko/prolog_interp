@@ -44,7 +44,9 @@ public:
     // Returns a pair specifying if the term is a raw term or variable, and the corresponding index
 
     int add_node(node& node);
+
     void test_unification();
+    void test_goal();
 
 private:
     int add_structure(node& node_instance);

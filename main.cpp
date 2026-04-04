@@ -21,6 +21,6 @@ std::string read_file(const std::string& path) {
 int main() {
     unification_environment environment {};
     for (;;) {
-        environment.test_unification();
+        environment.test_goal();
     }
 }

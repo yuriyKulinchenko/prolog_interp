@@ -5,16 +5,33 @@
 #include "unification_environment.h"
 #include <iostream>
 
+bool is_goal_token(node_type type) {
+    using enum node_type;
+    return type == GOAL
+    || type == CONJUNCTION
+    || type == DISJUNCTION
+    || type == CUT;
+}
+
+bool is_goal_string(std::string& name) {
+    return name == "," || name == ";" || name == "!";
+}
+
 int unification_environment::add_node(node& node) {
     switch (node.type) {
         using enum node_type;
         case TERM: return add_structure(node);
         case VARIABLE: return add_variable(node.name);
-        default: throw std::logic_error("ERROR: Passed node is not a term or variable");
+        default: {
+            if (is_goal_token(node.type)) return add_structure(node);
+        }
     }
+    throw std::logic_error("ERROR: Passed node is not a term, variable or goal");
 }
 
 int unification_environment::add_structure(node &node_instance) {
+    if (node_instance.type == node_type::GOAL) return add_node(node_instance.children[0]);
+
     int structure_index = static_cast<int>(term_vector.size());
     term_vector.emplace_back(prolog_term_type::STRUCTURE);
 
@@ -39,10 +56,9 @@ int unification_environment::add_variable(std::string& variable_name) {
 
     if (variable_name == "_") {
         term_vector[variable_index].as.variable.type = prolog_variable_type::ANONYMOUS;
-    } else {
-        name_variable_map[variable_name] = variable_index;
-        variable_name_map[variable_index] = variable_name;
     }
+    name_variable_map[variable_name] = variable_index;
+    variable_name_map[variable_index] = variable_name;
     return variable_index;
 }
 
@@ -204,6 +220,21 @@ void unification_environment::test_unification() {
     unwind_term_vector(0);
 }
 
+void unification_environment::test_goal() {
+    std::string s;
+    std::cout << "Enter goal: ";
+    std::cin >> s;
+    lexer lexer(std::move(s));
+    parser parser(lexer.run());
+
+    node n = parser.goalExpr();
+    int index = add_node(n);
+
+    log_term(std::cout, index);
+    std::cout << '\n';
+}
+
+
 std::ostream &unification_environment::log_term(std::ostream& stream, int i, int depth) {
     if (depth == 0) return stream << "...";
     i = resolve_bound_variable(i);
@@ -274,16 +305,10 @@ std::ostream &unification_environment::log_structure(std::ostream &stream, int s
 }
 
 std::ostream &unification_environment::log_variable(std::ostream &stream, int variable_index, int depth) {
-    if (variable_name_map.contains(variable_index)) {
-        stream << variable_name_map[variable_index];
-        return stream;
-    }
-    stream << "V" << variable_index;
-    return stream;
+    if (term_vector[variable_index].is_anonymous_variable()) return stream << "_";
+    if (variable_name_map.contains(variable_index)) return stream << variable_name_map[variable_index];
+    return stream << "V" << variable_index;
 }
-
-
-
 
 std::ostream& unification_environment::log_variables(std::ostream &stream) {
     for (auto& [name, index]: name_variable_map) {

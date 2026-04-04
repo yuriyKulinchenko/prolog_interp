@@ -2,11 +2,11 @@
 #include <iostream>
 #include <optional>
 
-node create_transparent_list(node_type type, std::vector<node> nodes) {
+node create_transparent_list(node_type type, std::vector<node> nodes, const char* name = "") {
     if (nodes.size() == 1) {
         return nodes[0];
     }
-    return node{type, nodes};
+    return node{type, name, nodes};
 }
 
 std::vector<node> parser::run() {
@@ -56,7 +56,7 @@ node parser::disjunction() {
         nodes.push_back(conjunction());
     }
 
-    return create_transparent_list(node_type::DISJUNCTION, std::move(nodes));
+    return create_transparent_list(node_type::DISJUNCTION, std::move(nodes), ";");
 }
 
 // Conjunction ::= SimpleGoal (',' SimpleGoal)*
@@ -67,14 +67,14 @@ node parser::conjunction() {
         nodes.push_back(simpleGoal());
     }
 
-    return create_transparent_list(node_type::CONJUNCTION, std::move(nodes));
+    return create_transparent_list(node_type::CONJUNCTION, std::move(nodes), ",");
 }
 
 // SimpleGoal ::= Term | '(' GoalExpr ')' | '!'
 
 node parser::simpleGoal() {
     if (match(token_type::EXCLAMATION_MARK)) {
-        return node{node_type::CUT};
+        return node{node_type::CUT, "!"};
     }
 
     if (match(token_type::PAREN_OPEN)) {
