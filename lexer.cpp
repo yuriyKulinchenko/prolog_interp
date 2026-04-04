@@ -89,7 +89,6 @@ std::vector<token> lexer::run() {
             }
         }
     }
-    std::cout << token_vector << '\n';
     return token_vector;
 }
 

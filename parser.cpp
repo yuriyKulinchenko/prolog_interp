@@ -32,6 +32,9 @@ std::vector<node> parser::program() {
 
 node parser::clause() {
     node term_instance = term();
+    if (term_instance.type == node_type::VARIABLE) {
+        throw std::logic_error("ERROR: Left side of clause cannot be a variable");
+    }
     std::optional<node> goal_instance;
     if (match(token_type::RULE_OPERATOR))
         goal_instance = goalExpr();

@@ -19,6 +19,22 @@ bool is_goal_string(std::string& name) {
     return name == "," || name == ";" || name == "!";
 }
 
+prolog_structure &unification_environment::get_structure(int index) {
+    if (!term_vector[index].is_structure()) {
+        throw std::logic_error("ERROR: Expected structure, got variable");
+    }
+    return term_vector[index].as.structure;
+}
+
+prolog_variable &unification_environment::get_variable(int index) {
+    if (!term_vector[index].is_variable()) {
+        throw std::logic_error("ERROR: Expected variable, got structure");
+    }
+    return term_vector[index].as.variable;
+}
+
+
+
 int unification_environment::add_node(node& node) {
     switch (node.type) {
         using enum node_type;
@@ -49,6 +65,27 @@ int unification_environment::add_clause(node &node) {
 void unification_environment::add_clauses(std::vector<node>& nodes) {
     for (auto& node: nodes) {
         add_clause(node);
+    }
+
+    auto projection = [&](const prolog_clause& clause) {
+        return get_structure(clause.head).identifier_index;
+    };
+
+    auto largest_identifier_index =
+        projection(std::ranges::max(clause_vector, std::less{}, projection));
+
+    // Clauses will be sorted in the clause_vector based on the ordering of the identifier, for O(1) access time
+    std::ranges::sort(clause_vector, std::less{}, projection);
+
+    identifier_clause_vector = std::vector(largest_identifier_index + 1, 0);
+
+    int i = -1;
+
+    for (int n = 0; n < clause_vector.size(); n++) {
+        if (int j = projection(clause_vector[n]); i != j) {
+            i = j;
+            identifier_clause_vector[i] = n;
+        }
     }
 }
 
@@ -253,6 +290,9 @@ void unification_environment::test_clauses(const std::string& path) {
     add_clauses(clauses);
 
     log_clauses(std::cout);
+
+    std::cout << "Identifier vector: " << identifier_vector << '\n';
+    std::cout << "" << identifier_clause_vector << '\n';
 }
 
 

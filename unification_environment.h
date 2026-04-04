@@ -51,6 +51,9 @@ public:
     void test_clauses(const std::string& path);
 
 private:
+    prolog_structure& get_structure(int index);
+    prolog_variable& get_variable(int index);
+
     int add_structure(node& node_instance);
     int add_variable(std::string& variable_name);
     int add_identifier(const std::string& name);
@@ -74,6 +77,7 @@ private:
     std::vector<prolog_term> term_vector;
     std::vector<std::string> identifier_vector;
     std::vector<prolog_clause> clause_vector;
+    std::vector<int> identifier_clause_vector; // Maps identifier index to start of clause
 
     std::unordered_map<std::string, int> name_variable_map;
     std::unordered_map<int, std::string> variable_name_map;

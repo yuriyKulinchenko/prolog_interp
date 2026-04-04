@@ -1,12 +1,12 @@
 #ifndef HELPER_H
 #define HELPER_H
 
-#include <ostream>
 #include <vector>
 #include <fstream>
+#include <unordered_map>
 
 template<typename T>
-std::ostream& operator<<(std::ostream& stream, std::vector<T> vector) {
+std::ostream& operator<<(std::ostream& stream, std::vector<T>& vector) {
     stream << '[';
     if (vector.size() != 0) {
         stream << vector[0];
@@ -15,6 +15,23 @@ std::ostream& operator<<(std::ostream& stream, std::vector<T> vector) {
         }
     }
     return stream << ']';
+}
+
+template<typename T, typename U>
+std::ostream& operator<<(std::ostream& stream, std::unordered_map<T, U>& map) {
+    stream << '{';
+
+    auto it = map.begin();
+    if (it != map.end()) {
+        stream << it->first << " -> " << it->second;
+        ++it;
+    }
+
+    for (; it != map.end(); ++it) {
+        stream << ", " << it->first << " -> " << it->second;
+    }
+
+    return stream << '}';
 }
 
 inline std::string read_file(const std::string& path) {
