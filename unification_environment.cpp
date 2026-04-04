@@ -5,6 +5,8 @@
 #include "unification_environment.h"
 #include <iostream>
 
+#include "helper.h"
+
 bool is_goal_token(node_type type) {
     using enum node_type;
     return type == GOAL
@@ -28,6 +30,28 @@ int unification_environment::add_node(node& node) {
     }
     throw std::logic_error("ERROR: Passed node is not a term, variable or goal");
 }
+
+int unification_environment::add_clause(node &node) {
+    // Clause may or may not have a body:
+    if (node.type != node_type::CLAUSE) throw std::logic_error("ERROR: Expected clause, received something else");
+    clause_vector.emplace_back(add_node(node.children[0]));
+    int clause_index = static_cast<int>(clause_vector.size()) - 1;
+    if (node.children.size() == 2) {
+        // The body is also present:
+        clause_vector[clause_index].body = add_node(node.children[1]);
+    }
+    // Remove all variable bindings:
+    variable_name_map.clear();
+    name_variable_map.clear();
+    return clause_index;
+}
+
+void unification_environment::add_clauses(std::vector<node>& nodes) {
+    for (auto& node: nodes) {
+        add_clause(node);
+    }
+}
+
 
 int unification_environment::add_structure(node &node_instance) {
     if (node_instance.type == node_type::GOAL) return add_node(node_instance.children[0]);
@@ -220,18 +244,15 @@ void unification_environment::test_unification() {
     unwind_term_vector(0);
 }
 
-void unification_environment::test_goal() {
-    std::string s;
-    std::cout << "Enter goal: ";
-    std::cin >> s;
+void unification_environment::test_clauses(const std::string& path) {
+    std::string s = read_file(path);
     lexer lexer(std::move(s));
     parser parser(lexer.run());
 
-    node n = parser.goalExpr();
-    int index = add_node(n);
+    std::vector<node> clauses = parser.program();
+    add_clauses(clauses);
 
-    log_term(std::cout, index);
-    std::cout << '\n';
+    log_clauses(std::cout);
 }
 
 
@@ -318,4 +339,24 @@ std::ostream& unification_environment::log_variables(std::ostream &stream) {
     }
     return stream;
 }
+
+std::ostream &unification_environment::log_clauses(std::ostream &stream) {
+    for (int i = 0; i < clause_vector.size(); i++) {
+        log_clause(stream, i, max_logging_depth) << '\n';
+    }
+    return stream;
+}
+
+
+std::ostream &unification_environment::log_clause(std::ostream &stream, int clause_index, int depth) {
+    prolog_clause& clause = clause_vector[clause_index];
+    log_term(stream, clause.head, depth);
+    if (clause.body != -1) {
+        stream << " :- ";
+        log_term(stream, clause.body, depth);
+    }
+    return stream << '.';
+}
+
+
 

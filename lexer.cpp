@@ -1,4 +1,5 @@
 #include "lexer.h"
+#include "helper.h"
 #include <iostream>
 
 std::vector<token> lexer::run() {
@@ -6,6 +7,12 @@ std::vector<token> lexer::run() {
     while (!at_end()) {
         char c = advance();
         if (is_whitespace(c)) continue;
+        if (c == '%') {
+            while (!at_end() && peek() != '\n') {
+                advance();
+            }
+            continue;
+        }
         switch (c) {
             using enum token_type;
 
@@ -82,6 +89,7 @@ std::vector<token> lexer::run() {
             }
         }
     }
+    std::cout << token_vector << '\n';
     return token_vector;
 }
 

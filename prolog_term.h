@@ -57,4 +57,15 @@ private:
     void destroy_active();
 };
 
+struct prolog_clause {
+    prolog_clause(int head, int body):
+        head(head), body(body) {}
+
+    explicit prolog_clause(int head):
+        head(head), body(-1) {}
+
+    int head; // Term
+    int body; // Goal: -1 if not present
+};
+
 #endif // PROLOG_TERM_H

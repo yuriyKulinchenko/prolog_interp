@@ -44,9 +44,11 @@ public:
     // Returns a pair specifying if the term is a raw term or variable, and the corresponding index
 
     int add_node(node& node);
+    int add_clause(node& node);
+    void add_clauses(std::vector<node>& nodes);
 
     void test_unification();
-    void test_goal();
+    void test_clauses(const std::string& path);
 
 private:
     int add_structure(node& node_instance);
@@ -63,12 +65,15 @@ private:
     void unwind_trail(int i);
 
     std::ostream& log_variables(std::ostream& stream);
+    std::ostream& log_clauses(std::ostream& stream);
     std::ostream& log_term(std::ostream& stream, int term_index, int depth = max_logging_depth);
+    std::ostream& log_clause(std::ostream& stream, int clause_index, int depth = max_logging_depth);
     std::ostream& log_structure(std::ostream& stream, int structure_index, int depth);
     std::ostream& log_variable(std::ostream& stream, int variable_index, int depth);
 
     std::vector<prolog_term> term_vector;
     std::vector<std::string> identifier_vector;
+    std::vector<prolog_clause> clause_vector;
 
     std::unordered_map<std::string, int> name_variable_map;
     std::unordered_map<int, std::string> variable_name_map;
