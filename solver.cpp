@@ -31,59 +31,68 @@ goal_stack = [s, x, y, z], history = []
 
 */
 
-solver &solver::operator++() {
+// return happens in only 2 cases: when a solution is found,
+// or when all possible solutions are exhausted
 
+solver &solver::operator++() {
+    int continuation = 0;
+    // Edge case handling:
     if (goal_stack.empty()) {
         if (history.empty()) {
-            // All possible solutions have been found:
             found_all = true;
             return *this;
         }
-
-        // Another decision point to try:
-        restore_decision_point();
+        continuation = restore_decision_point();
     }
 
     while (!goal_stack.empty()) {
 #ifdef SOLVER_DEBUG
-    log_goal_stack();
-    std::cout << '\n';
+        std::cout << "Continuation: " << continuation << '\n';
+        std::cout << "Goals: ";
+        log_goal_stack();
+        std::cout << '\n';
+        std::cout << "History: ";
+        log_history();
+        std::cout << "\n\n";
 #endif
-        // Query the top of the stack:
-        int goal_index = peek_goal();
-        goal_index = environment.resolve_bound_variable(goal_index);
 
-        prolog_structure& structure = environment.get_structure(goal_index);
+        // Identify the goal, and attempt to make progress:
 
-        // Check if range exists:
+        int goal_index = environment.resolve_bound_variable(peek_goal());
+        int identifier_index = environment.get_structure(goal_index).identifier_index;
+        std::pair clause_range = {0, 0};
 
-        std::pair range = {0, 0};
-
-        if (environment.identifier_clause_map.contains(structure.identifier_index)) {
-            range = environment.identifier_clause_map[structure.identifier_index];
+        if (environment.identifier_clause_map.contains(identifier_index)) {
+            clause_range = environment.identifier_clause_map[identifier_index];
         }
 
-        bool add_decision_point = range.second - range.first > 1;
+        int lower_bound = clause_range.first;
+        int upper_bound = clause_range.second;
+        int choice_count = upper_bound - lower_bound;
 
-        bool found_success = false;
-        for (int i = range.first; i < range.second && !found_success; i++) {
-            int choice_number = i - range.first;
-            if (apply_clause(range.first, choice_number, add_decision_point)) {
-                found_success = true;
-            }
+
+        bool progress_made = false;
+        for (int choice = continuation; choice < choice_count && !progress_made; choice++) {
+            // Attempt each clause:
+            bool success = apply_clause(lower_bound, choice);
+            if (success) progress_made = true;
         }
 
-        if (found_success) continue;
+        if (progress_made) {
+            continuation = 0;
+            continue;
+        }
 
-        // Backtracking must now occur:
+        // Otherwise, backtracking is necessary:
 
         if (history.empty()) {
             found_all = true;
-            return *this; // No more backtracking can happen, failure state
+            return *this;
         }
-        restore_decision_point();
 
+        continuation = restore_decision_point();
     }
+
     return *this;
 }
 
@@ -108,15 +117,15 @@ int solver::peek_goal() {
 
 decision_point solver::pop_history() {
     decision_point return_point = history[history.size() - 1];
-    goal_stack.pop_back();
+    history.pop_back();
     return return_point;
 }
 
 
 bool solver::apply_clause(int clause_index, int choice_number, bool add_decision_point) {
     clause_index = clause_index + choice_number;
-    int goal_index = pop_goal();
     prolog_timestamp timestamp = get_timestamp();
+    int goal_index = pop_goal();
 
 #ifdef SOLVER_DEBUG
     prolog_structure& goal_structure = environment.get_structure(goal_index);
@@ -137,13 +146,14 @@ bool solver::apply_clause(int clause_index, int choice_number, bool add_decision
 
     if (!environment.unify(goal_index, duplicate_clause.head)) {
         apply_timestamp(timestamp);
+        goal_stack[goal_stack.size() - 1] = goal_index;
         return false;
     }
 
     // If successful, add decision point and clause body:
 
     if (add_decision_point)
-        history.emplace_back(timestamp, goal_index, choice_number);
+        history.emplace_back(timestamp, goal_index, choice_number + 1);
 
     // If the clause body is empty, we are done:
 
@@ -169,7 +179,7 @@ bool solver::apply_clause(int clause_index, int choice_number, bool add_decision
 int solver::restore_decision_point() {
     decision_point point = pop_history();
     apply_timestamp(point.timestamp);
-    goal_stack[goal_stack.size() - 1] = point.timestamp.goal_stack_index;
+    goal_stack[goal_stack.size() - 1] = point.goal_index;
     return point.next_choice_number;
 }
 
@@ -201,3 +211,24 @@ void solver::log_goal_stack() {
     }
     std::cout << ']';
 }
+
+void solver::log_decision_point(decision_point &point) {
+    std::cout << '{';
+    environment.log_term(std::cout, point.goal_index)
+    << ", " << point.next_choice_number;
+    std::cout << '}';
+}
+
+
+void solver::log_history() {
+    std::cout << '[';
+    if (!history.empty()) {
+        log_decision_point(history[0]);
+        for (int i = 1; i < history.size(); i++) {
+            std::cout << ", ";
+            log_decision_point(history[i]);
+        }
+    }
+    std::cout << ']';
+}
+

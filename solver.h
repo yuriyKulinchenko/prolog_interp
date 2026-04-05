@@ -29,7 +29,12 @@ Main execution loop:
 */
 
 struct prolog_timestamp {
-    prolog_timestamp(int term_index, int clause_index, int trail_index, int goal_stack_index):
+    prolog_timestamp(
+        int term_index,
+        int clause_index,
+        int trail_index,
+        int goal_stack_index
+        ):
     term_index(term_index), clause_index(clause_index),
     trail_index(trail_index), goal_stack_index(goal_stack_index) {}
 
@@ -57,7 +62,7 @@ public:
     bool operator*();
 
     void log_goal_stack();
-    void log_decision_stack();
+    void log_history();
     bool at_end();
 
 private:
@@ -66,6 +71,8 @@ private:
     int pop_goal();
     int peek_goal();
     decision_point pop_history();
+
+    void log_decision_point(decision_point& point);
 
     /*
     apply_clause(clause_index) takes the clause specified by clause_index, and
