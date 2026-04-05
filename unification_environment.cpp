@@ -34,7 +34,9 @@ prolog_variable &unification_environment::get_variable(int index) {
     return term_vector[index].as.variable;
 }
 
-
+prolog_clause &unification_environment::get_clause(int index) {
+    return clause_vector[index];
+}
 
 int unification_environment::add_node(node& node) {
     switch (node.type) {
@@ -71,7 +73,6 @@ int unification_environment::duplicate_clause(int clause_index) {
     int duplicated_head = duplicate_term(original_clause.head, variable_map);
     int duplicated_body = original_clause.body == -1 ? -1 : duplicate_term(original_clause.body, variable_map);
     clause_vector.emplace_back(duplicated_head, duplicated_body);
-    std::cout << "Final variable map: " << variable_map << '\n';
     return duplicated_clause_index;
 }
 
@@ -100,6 +101,11 @@ int unification_environment::duplicate_structure(int index, std::unordered_map<i
 
     int original_identifier_index = original.identifier_index;
     std::vector<int> original_children = original.children;
+
+    if (original_children.empty()) {
+        // Atomic structure, index can be re-used:
+        return index;
+    }
 
     std::vector<int> duplicated_children;
     duplicated_children.reserve(original_children.size());
@@ -150,15 +156,27 @@ void unification_environment::add_clauses(std::vector<node>& nodes) {
     // Clauses will be sorted in the clause_vector based on the ordering of the identifier, for O(1) access time
     std::ranges::sort(clause_vector, std::less{}, projection);
 
-    identifier_clause_vector = std::vector(largest_identifier_index + 1, 0);
-
-    int i = -1;
+    int current_id = -1;
+    int start_index = 0;
 
     for (int n = 0; n < clause_vector.size(); n++) {
-        if (int j = projection(clause_vector[n]); i != j) {
-            i = j;
-            identifier_clause_vector[i] = n;
+        int id = projection(clause_vector[n]);
+
+        if (id != current_id) {
+            // close previous range
+            if (current_id != -1) {
+                identifier_clause_map[current_id] = {start_index, n};
+            }
+
+            // start new range
+            current_id = id;
+            start_index = n;
         }
+    }
+
+    // close final range
+    if (current_id != -1) {
+        identifier_clause_map[current_id] = {start_index, clause_vector.size()};
     }
 }
 
@@ -362,7 +380,6 @@ void unification_environment::test_clauses(const std::string& path) {
     log_clauses(std::cout);
 
     std::cout << "Identifier vector: " << identifier_vector << '\n';
-    std::cout << "" << identifier_clause_vector << '\n';
 }
 
 void unification_environment::test_duplication(const std::string &path) {
@@ -490,30 +507,52 @@ std::ostream &unification_environment::log_clause(std::ostream &stream, int clau
 
 // Search logic:
 
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define RESET   "\033[0m"
+
 void unification_environment::run_interpreter() {
     for (;;) {
         std::cout << "?- ";
         std::string s;
         std::getline(std::cin, s);
         if (s == "halt.") return;
-        lexer lexer(std::move(s));
-        parser parser(lexer.run());
+        if (s.empty()) continue;
 
-        node n = parser.goalExpr();
+
+        node n;
+
+        try {
+            lexer lexer(std::move(s));
+            parser parser(lexer.run());
+            n = parser.goalExpr();
+        } catch (std::logic_error& e) {
+            std::cout << "ERROR: Malformed input\n";
+            continue;
+        }
+
         int goal_index = add_node(n);
 
         solver solver{*this};
         solver.solve(goal_index);
+        ++solver;
 
-        while (*solver) {
+        while (!solver.at_end()) {
+            std::cout << GREEN << "true" << RESET << '\n';
             log_variables(std::cout);
             std::string command;
-            std::cin >> command;
+            std::getline(std::cin, command);
             if (command == "halt.") return;
             ++solver;
         }
+
+        std::cout << RED << "false" << RESET << '\n';
     }
 }
+
+#undef RED
+#undef GREEN
+#undef RESET
 
 
 

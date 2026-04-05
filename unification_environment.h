@@ -67,6 +67,7 @@ public:
 private:
     prolog_structure& get_structure(int index);
     prolog_variable& get_variable(int index);
+    prolog_clause& get_clause(int index);
 
     int add_structure(node& node_instance);
     int add_variable(std::string& variable_name);
@@ -86,8 +87,6 @@ private:
     void unwind_clause_vector(int i);
     void unwind_trail(int i);
 
-    bool solve(int goal_index);
-
     std::ostream& log_variables(std::ostream& stream);
     std::ostream& log_clauses(std::ostream& stream);
     std::ostream& log_term(std::ostream& stream, int term_index, int depth = max_logging_depth);
@@ -98,7 +97,7 @@ private:
     std::vector<prolog_term> term_vector;
     std::vector<std::string> identifier_vector;
     std::vector<prolog_clause> clause_vector;
-    std::vector<int> identifier_clause_vector; // Maps identifier index to start of clause
+    std::unordered_map<int, std::pair<int, int>> identifier_clause_map; // Maps identifier index to start of clause
 
     std::unordered_map<std::string, int> name_variable_map;
     std::unordered_map<int, std::string> variable_name_map;
