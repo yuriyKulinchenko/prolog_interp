@@ -4,7 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include "parser.h"
-#include "prolog_term.h"
+#include "prolog_types.h"
 
 #define UNIFICATION_DEBUG
 
@@ -38,10 +38,22 @@ Current problem: Store and instantiate goals
 
 */
 
+/*
+
+What is a sensible representation for a decision point?
+A decision point is uniquely identified by:
+- A goal (index in the term_vector)
+- A trail index (variable bindings)
+- The index of the goal chosen
+
+*/
+
 class unification_environment {
 public:
     // Adds the term specified by the passed node to the term_vector
     // Returns a pair specifying if the term is a raw term or variable, and the corresponding index
+
+    friend class solver;
 
     int add_node(node& node);
     int add_clause(node& node);
@@ -50,6 +62,7 @@ public:
     void test_unification();
     void test_clauses(const std::string& path);
     void test_duplication(const std::string& path);
+    void run_interpreter();
 
 private:
     prolog_structure& get_structure(int index);
@@ -70,7 +83,10 @@ private:
     int resolve_bound_variable(int variable_index);
 
     void unwind_term_vector(int i);
+    void unwind_clause_vector(int i);
     void unwind_trail(int i);
+
+    bool solve(int goal_index);
 
     std::ostream& log_variables(std::ostream& stream);
     std::ostream& log_clauses(std::ostream& stream);

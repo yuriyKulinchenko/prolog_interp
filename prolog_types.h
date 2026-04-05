@@ -1,5 +1,5 @@
-#ifndef PROLOG_TERM_H
-#define PROLOG_TERM_H
+#ifndef PROLOG_TYPES_H
+#define PROLOG_TYPES_H
 
 #include <vector>
 
@@ -68,4 +68,4 @@ struct prolog_clause {
     int body; // Goal: -1 if not present
 };
 
-#endif // PROLOG_TERM_H
+#endif // PROLOG_TYPES_H

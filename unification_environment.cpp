@@ -3,6 +3,7 @@
 //
 
 #include "unification_environment.h"
+#include "solver.h"
 #include <iostream>
 
 #include "helper.h"
@@ -308,22 +309,17 @@ void unification_environment::unwind_trail(int i) {
         int variable_index = trail[j];
         term_vector[variable_index].as.variable.type = prolog_variable_type::UNBOUND;
     }
-
-    trail.resize(i);
+    trail.erase(trail.begin() + i, trail.end());
 }
 
 void unification_environment::unwind_term_vector(int i) {
     if (term_vector.empty()) return;
-    for (int j = static_cast<int>(term_vector.size()) - 1; j >= i; j--) {
-        if (term_vector[j].is_variable()) {
-            if (auto it = variable_name_map.find(j); it != variable_name_map.end()) {
-                std::string name = it->second;
-                variable_name_map.erase(it);
-                name_variable_map.erase(name);
-            }
-        }
-    }
     term_vector.erase(term_vector.begin() + i, term_vector.end());
+}
+
+void unification_environment::unwind_clause_vector(int i) {
+    if (clause_vector.empty()) return;
+    clause_vector.erase(clause_vector.begin() + i, clause_vector.end());
 }
 
 void unification_environment::test_unification() {
@@ -349,6 +345,8 @@ void unification_environment::test_unification() {
     std::cout << (success ? "Unification succeeded" : "Unification failed") << '\n';
     if (success) log_variables(std::cout);
 
+    variable_name_map.clear();
+    name_variable_map.clear();
     unwind_trail(0);
     unwind_term_vector(0);
 }
@@ -489,6 +487,34 @@ std::ostream &unification_environment::log_clause(std::ostream &stream, int clau
     }
     return stream << '.';
 }
+
+// Search logic:
+
+void unification_environment::run_interpreter() {
+    for (;;) {
+        std::cout << "?- ";
+        std::string s;
+        std::getline(std::cin, s);
+        if (s == "halt.") return;
+        lexer lexer(std::move(s));
+        parser parser(lexer.run());
+
+        node n = parser.goalExpr();
+        int goal_index = add_node(n);
+
+        solver solver{*this};
+        solver.solve(goal_index);
+
+        while (*solver) {
+            log_variables(std::cout);
+            std::string command;
+            std::cin >> command;
+            if (command == "halt.") return;
+            ++solver;
+        }
+    }
+}
+
 
 
 

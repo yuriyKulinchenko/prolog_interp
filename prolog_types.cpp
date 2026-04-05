@@ -1,4 +1,4 @@
-#include "prolog_term.h"
+#include "prolog_types.h"
 
 // prolog_variable
 
