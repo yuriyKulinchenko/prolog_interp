@@ -8,11 +8,31 @@
 void solver::solve(int goal_index) {
     found_all = false;
     goal_stack.clear();
+    history.clear();
     goal_stack.emplace_back(goal_index, 0);
 }
 
+void solver::log_state(int continuation) {
+    std::cout << "Continuation: " << continuation << '\n';
+    std::cout << "Goals: ";
+    log_goal_stack(goal_stack);
+    std::cout << '\n';
+    std::cout << "History: ";
+    log_history();
+    std::cout << "\n";
+}
+
+
 solver &solver::operator++() {
     int continuation = 0;
+
+#ifdef SOLVER_DEBUG
+    bool first_log = true;
+    log_state(continuation);
+    std::cout << '\n';
+#endif
+
+
     // Edge case handling:
     if (goal_stack.empty()) {
         if (history.empty()) {
@@ -20,18 +40,22 @@ solver &solver::operator++() {
             return *this;
         }
         continuation = restore_decision_point();
+#ifdef SOLVER_DEBUG
+        first_log = false;
+#endif
     }
 
     while (!goal_stack.empty()) {
+
 #ifdef SOLVER_DEBUG
-        std::cout << "Continuation: " << continuation << '\n';
-        std::cout << "Goals: ";
-        log_goal_stack();
-        std::cout << '\n';
-        std::cout << "History: ";
-        log_history();
-        std::cout << "\n\n";
+        if (first_log) {
+            first_log = false;
+        } else {
+            log_state(continuation);
+            std::cout << '\n';
+        }
 #endif
+
 
         // Identify the goal, and attempt to make progress:
 
@@ -42,13 +66,31 @@ solver &solver::operator++() {
 
         switch (identifier_index) {
             case unification_environment::conjunction_identifier_index: {
-                std::cerr << "ERROR: Nested conjunctions are currently unsupported";
-                break;
+                std::cout << "HERE HERE" << '\n';
+                goal_stack.pop_back();
+                prolog_structure& conjunction_structure = environment.get_structure(goal_index);
+                for (int child_index: conjunction_structure.children) {
+                    goal_stack.emplace_back(child_index, peek_goal().cut_barrier);
+                }
+                continue;
             }
 
             case unification_environment::disjunction_identifier_index: {
-                std::cerr << "ERROR: Disjunctions are currently unsupported";
-                break;
+                // Decision points must be placed:
+                std::vector<int>& disjunction_children = environment.get_structure(goal_index).children;
+
+                // decision point can be placed:
+                if (continuation < disjunction_children.size() - 1) {
+                    history.emplace_back(get_timestamp(), goal_stack, continuation + 1);
+                }
+
+                // Add the relevant child:
+                int cut_barrier = peek_goal().cut_barrier;
+                goal_stack.pop_back();
+                goal_stack.emplace_back(disjunction_children[continuation], cut_barrier);
+
+                continuation = 0;
+                continue;
             }
 
             case unification_environment::cut_identifier_index: {
@@ -123,58 +165,39 @@ decision_point solver::pop_history() {
     history.pop_back();
     return return_point;
 }
-
-
 bool solver::apply_clause(int clause_index, int choice_number, bool add_decision_point) {
     clause_index = clause_index + choice_number;
     prolog_timestamp timestamp = get_timestamp();
     goal goal_instance = pop_goal();
 
-#ifdef SOLVER_DEBUG
-    prolog_structure& goal_structure = environment.get_structure(goal_instance.term_index);
-    prolog_clause& original_clause = environment.get_clause(clause_index);
-
-    if (environment.get_structure(original_clause.head).identifier_index != goal_structure.identifier_index) {
-        std::cerr << "Term: ";
-        environment.log_term(std::cerr, goal_instance.term_index) << " does not match rule head: ";
-        environment.log_term(std::cerr, original_clause.head);
-        throw std::logic_error("ERROR: rule instantiation failed");
-    }
-#endif
-
     int duplicate_clause_index = environment.duplicate_clause(clause_index);
     prolog_clause& duplicate_clause = environment.get_clause(duplicate_clause_index);
 
-    // Attempt unification with the head:
-
     if (!environment.unify(goal_instance.term_index, duplicate_clause.head)) {
         apply_timestamp(timestamp);
-        goal_stack[goal_stack.size() - 1] = goal_instance;
+        goal_stack.push_back(goal_instance);
         return false;
     }
 
-    // If successful, add decision point and clause body:
-
-    if (add_decision_point)
-        history.emplace_back(timestamp, goal_instance, choice_number + 1);
-
-    // If the clause body is empty, we are done:
+    if (add_decision_point) {
+        std::vector<goal> saved_stack = goal_stack;
+        saved_stack.push_back(goal_instance);
+        history.emplace_back(timestamp, saved_stack, choice_number + 1);
+    }
 
     if (duplicate_clause.body == -1) return true;
 
     prolog_term& body = environment.term_vector[duplicate_clause.body];
 
     if (body.is_structure() &&
-        environment.identifier_vector[body.as.structure.identifier_index] == ",") {
-        // Body is a conjunction of terms:
+        body.as.structure.identifier_index == unification_environment::conjunction_identifier_index) {
         prolog_structure& conjunction = body.as.structure;
-        int num_children = static_cast<int>(conjunction.children.size());
-        for (int i = num_children - 1; i >= 0; i--) {
+        for (int i = static_cast<int>(conjunction.children.size()) - 1; i >= 0; --i) {
             goal_stack.emplace_back(conjunction.children[i], goal_instance.cut_barrier);
         }
-    } else {
-        goal_stack.emplace_back(duplicate_clause.body, goal_instance.cut_barrier);
-    }
+        } else {
+            goal_stack.emplace_back(duplicate_clause.body, goal_instance.cut_barrier);
+        }
 
     return true;
 }
@@ -182,7 +205,7 @@ bool solver::apply_clause(int clause_index, int choice_number, bool add_decision
 int solver::restore_decision_point() {
     decision_point point = pop_history();
     apply_timestamp(point.timestamp);
-    goal_stack[goal_stack.size() - 1] = point.goal_instance;
+    goal_stack = point.goal_stack;
     return point.next_choice_number;
 }
 
@@ -192,7 +215,6 @@ prolog_timestamp solver::get_timestamp() {
         static_cast<int>(environment.term_vector.size()),
         static_cast<int>(environment.clause_vector.size()),
         static_cast<int>(environment.trail.size()),
-        static_cast<int>(goal_stack.size())
     };
 }
 
@@ -200,23 +222,22 @@ void solver::apply_timestamp(prolog_timestamp timestamp) {
     environment.unwind_term_vector(timestamp.term_index);
     environment.unwind_clause_vector(timestamp.clause_index);
     environment.unwind_trail(timestamp.trail_index);
-    goal_stack.resize(timestamp.goal_stack_index); // May increase the size
 }
 
 void solver::log_goal(goal goal_instance) {
-    std::cout << '{';
-    environment.log_term(std::cout, goal_instance.term_index)
-    << ", " << goal_instance.cut_barrier << '}';
+    // std::cout << '{';
+    environment.log_term(std::cout, goal_instance.term_index);
+    // << ", " << goal_instance.cut_barrier << '}';
 }
 
 
-void solver::log_goal_stack() {
+void solver::log_goal_stack(std::vector<goal> goal_stack_instance) {
     std::cout << '[';
-    if (!goal_stack.empty()) {
-        log_goal(goal_stack[0]);
-        for (int i = 1; i < goal_stack.size(); i++) {
+    if (!goal_stack_instance.empty()) {
+        log_goal(goal_stack_instance[0]);
+        for (int i = 1; i < goal_stack_instance.size(); i++) {
             std::cout << ", ";
-            log_goal(goal_stack[i]);
+            log_goal(goal_stack_instance[i]);
         }
     }
     std::cout << ']';
@@ -224,8 +245,8 @@ void solver::log_goal_stack() {
 
 void solver::log_decision_point(decision_point &point) {
     std::cout << '{';
-    environment.log_term(std::cout, point.goal_instance.term_index);
-    std::cout << ", " << point.next_choice_number;
+    log_goal_stack(point.goal_stack);
+    std::cout << ", next_choice=" << point.next_choice_number;
     std::cout << '}';
 }
 

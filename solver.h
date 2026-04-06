@@ -43,24 +43,22 @@ struct prolog_timestamp {
     prolog_timestamp(
         int term_index,
         int clause_index,
-        int trail_index,
-        int goal_stack_index
+        int trail_index
         ):
     term_index(term_index), clause_index(clause_index),
-    trail_index(trail_index), goal_stack_index(goal_stack_index) {}
+    trail_index(trail_index) {}
 
     int term_index;
     int clause_index;
     int trail_index;
-    int goal_stack_index;
 };
 
 struct decision_point {
-    decision_point(prolog_timestamp timestamp, goal goal_instance, int next_choice_number):
-    timestamp(timestamp), goal_instance(goal_instance), next_choice_number(next_choice_number) {}
+    decision_point(prolog_timestamp timestamp, std::vector<goal>& goal_stack, int next_choice_number):
+    timestamp(timestamp), goal_stack(std::move(goal_stack)), next_choice_number(next_choice_number) {}
 
     prolog_timestamp timestamp;
-    goal goal_instance;
+    std::vector<goal> goal_stack;
     int next_choice_number;
 };
 
@@ -72,7 +70,7 @@ public:
     solver& operator++();
     bool operator*();
 
-    void log_goal_stack();
+    void log_goal_stack(std::vector<goal> goal_stack_instance);
     void log_history();
     bool at_end();
 
@@ -85,6 +83,7 @@ private:
 
     void log_decision_point(decision_point& point);
     void log_goal(goal goal_instance);
+    void log_state(int continuation);
 
     /*
     apply_clause(clause_index) takes the clause specified by clause_index, and

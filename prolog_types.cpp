@@ -72,11 +72,6 @@ bool prolog_term::is_variable() const {
     return type == prolog_term_type::VARIABLE;
 }
 
-bool prolog_term::is_anonymous_variable() const {
-    return is_variable() &&
-        as.variable.type == prolog_variable_type::ANONYMOUS;
-}
-
 bool prolog_term::is_unbound_variable() const {
     return is_variable() &&
         as.variable.type == prolog_variable_type::UNBOUND;

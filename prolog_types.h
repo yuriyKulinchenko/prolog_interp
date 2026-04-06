@@ -4,7 +4,7 @@
 #include <vector>
 
 enum class prolog_variable_type {
-    BOUND, UNBOUND, ANONYMOUS
+    BOUND, UNBOUND
 };
 
 struct prolog_variable {
@@ -39,7 +39,6 @@ struct prolog_term {
     ~prolog_term();
 
     [[nodiscard]] bool is_variable() const;
-    [[nodiscard]] bool is_anonymous_variable() const;
     [[nodiscard]] bool is_unbound_variable() const;
     [[nodiscard]] bool is_structure() const;
 

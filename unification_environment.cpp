@@ -135,8 +135,6 @@ int unification_environment::duplicate_variable(int index, std::unordered_map<in
     // If anonymous, index can be re-used:
     prolog_variable& variable = term_vector[index].as.variable;
 
-    if (variable.type == prolog_variable_type::ANONYMOUS) return index;
-
     // If mapping exists:
     if (variable_map.contains(index)) return variable_map[index];
 
@@ -203,18 +201,20 @@ int unification_environment::add_structure(node &node_instance) {
 }
 
 int unification_environment::add_variable(std::string& variable_name) {
-    if (name_variable_map.contains(variable_name)) {
+
+    if (name_variable_map.contains(variable_name) && variable_name != "_") {
         return name_variable_map[variable_name];
     }
     // Otherwise, this name is not yet mapped, or is anonymous:
     term_vector.emplace_back(prolog_term_type::VARIABLE);
     int variable_index = static_cast<int>(term_vector.size()) - 1;
 
-    if (variable_name == "_") {
-        term_vector[variable_index].as.variable.type = prolog_variable_type::ANONYMOUS;
+
+    if (variable_name != "_") {
+        name_variable_map[variable_name] = variable_index;
+        variable_name_map[variable_index] = variable_name;
     }
-    name_variable_map[variable_name] = variable_index;
-    variable_name_map[variable_index] = variable_name;
+
     return variable_index;
 }
 
@@ -235,7 +235,7 @@ int unification_environment::resolve_bound_variable(int variable_index) {
     prolog_term& term = term_vector[variable_index];
 
     // Variable index may be a structure:
-    if (term.is_structure() || term.is_anonymous_variable()) return variable_index;
+    if (term.is_structure()) return variable_index;
 
     // Variable index may be unbound:
     if (term.is_unbound_variable()) {
@@ -256,10 +256,6 @@ bool unification_environment::unify(int i, int j) {
 
     prolog_term& i_term = term_vector[i];
     prolog_term& j_term = term_vector[j];
-
-    if (i_term.is_anonymous_variable() || j_term.is_anonymous_variable()) {
-        return true;
-    }
 
     // Structure unification:
     if (i_term.is_structure() && j_term.is_structure()) {
@@ -477,7 +473,6 @@ std::ostream &unification_environment::log_structure(std::ostream &stream, int s
 }
 
 std::ostream &unification_environment::log_variable(std::ostream &stream, int variable_index, int depth) {
-    if (term_vector[variable_index].is_anonymous_variable()) return stream << "_";
     if (variable_name_map.contains(variable_index)) return stream << variable_name_map[variable_index];
     return stream << "V" << variable_index;
 }
