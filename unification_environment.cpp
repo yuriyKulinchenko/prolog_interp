@@ -8,6 +8,13 @@
 
 #include "helper.h"
 
+unification_environment::unification_environment() {
+    // These remain fixed
+    add_identifier(",");
+    add_identifier(";");
+    add_identifier("!");
+}
+
 bool is_goal_token(node_type type) {
     using enum node_type;
     return type == GOAL
@@ -149,9 +156,6 @@ void unification_environment::add_clauses(std::vector<node>& nodes) {
     auto projection = [&](const prolog_clause& clause) {
         return get_structure(clause.head).identifier_index;
     };
-
-    auto largest_identifier_index =
-        projection(std::ranges::max(clause_vector, std::less{}, projection));
 
     // Clauses will be sorted in the clause_vector based on the ordering of the identifier, for O(1) access time
     std::ranges::sort(clause_vector, std::less{}, projection);
@@ -554,6 +558,9 @@ void unification_environment::run_interpreter() {
 #undef GREEN
 #undef RESET
 
+void unification_environment::link_cuts(int head_index, int term_index) {
+
+}
 
 
 

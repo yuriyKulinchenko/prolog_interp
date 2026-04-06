@@ -6,7 +6,7 @@
 #include "parser.h"
 #include "prolog_types.h"
 
-#define UNIFICATION_DEBUG
+// #define UNIFICATION_DEBUG
 
 /*
 
@@ -54,6 +54,7 @@ public:
     // Returns a pair specifying if the term is a raw term or variable, and the corresponding index
 
     friend class solver;
+    unification_environment();
 
     int add_node(node& node);
     int add_clause(node& node);
@@ -63,6 +64,10 @@ public:
     void test_clauses(const std::string& path);
     void test_duplication(const std::string& path);
     void run_interpreter();
+
+    static constexpr int conjunction_identifier_index = 0;
+    static constexpr int disjunction_identifier_index = 1;
+    static constexpr int cut_identifier_index = 2;
 
 private:
     prolog_structure& get_structure(int index);
@@ -82,6 +87,7 @@ private:
     void unify_unbound_variables(int i,int j);
     void unify_unbound_variable_term(int i, int j);
     int resolve_bound_variable(int variable_index);
+    void link_cuts(int head_index, int term_index);
 
     void unwind_term_vector(int i);
     void unwind_clause_vector(int i);

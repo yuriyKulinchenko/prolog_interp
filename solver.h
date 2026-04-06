@@ -3,6 +3,8 @@
 
 #include "unification_environment.h"
 
+// #define SOLVER_DEBUG
+
 /*
 
 A decision point is uniquely identified by the following:
@@ -28,6 +30,15 @@ Main execution loop:
 
 */
 
+struct goal {
+    goal(int term_index, int cut_barrier):
+    term_index(term_index), cut_barrier(cut_barrier) {}
+    goal(): term_index(-1), cut_barrier(-1) {}
+
+    int term_index;
+    int cut_barrier;
+};
+
 struct prolog_timestamp {
     prolog_timestamp(
         int term_index,
@@ -45,11 +56,11 @@ struct prolog_timestamp {
 };
 
 struct decision_point {
-    decision_point(prolog_timestamp timestamp, int goal_index, int next_choice_number):
-    timestamp(timestamp), goal_index(goal_index), next_choice_number(next_choice_number) {}
+    decision_point(prolog_timestamp timestamp, goal goal_instance, int next_choice_number):
+    timestamp(timestamp), goal_instance(goal_instance), next_choice_number(next_choice_number) {}
 
     prolog_timestamp timestamp;
-    int goal_index;
+    goal goal_instance;
     int next_choice_number;
 };
 
@@ -68,11 +79,12 @@ public:
 private:
 
 
-    int pop_goal();
-    int peek_goal();
+    goal pop_goal();
+    goal peek_goal();
     decision_point pop_history();
 
     void log_decision_point(decision_point& point);
+    void log_goal(goal goal_instance);
 
     /*
     apply_clause(clause_index) takes the clause specified by clause_index, and
@@ -119,7 +131,7 @@ private:
 
     unification_environment& environment;
     std::vector<decision_point> history;
-    std::vector<int> goal_stack;
+    std::vector<goal> goal_stack;
     bool found_all;
 };
 
