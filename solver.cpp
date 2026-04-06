@@ -11,19 +11,6 @@ void solver::solve(int goal_index) {
     goal_stack.emplace_back(goal_index, 0);
 }
 
-/*
-
-
-2 tasks: handle cut, and handle disjunction
-
-How do I handle cut?
-
-Suppose I have the following clause:
-p :- q(r,s),!,t
-
-
-*/
-
 solver &solver::operator++() {
     int continuation = 0;
     // Edge case handling:
@@ -89,7 +76,8 @@ solver &solver::operator++() {
         bool progress_made = false;
         for (int choice = continuation; choice < choice_count && !progress_made; choice++) {
             // Attempt each clause:
-            bool success = apply_clause(lower_bound, choice);
+            bool add_decision_point = choice < choice_count - 1;
+            bool success = apply_clause(lower_bound, choice, add_decision_point);
             if (success) progress_made = true;
         }
 
