@@ -10,12 +10,13 @@
 
 unification_environment::unification_environment() {
     // These remain fixed
-    add_identifier(",");
-    add_identifier(";");
-    add_identifier("!");
+    for (auto& identifier: reserved_identifiers) {
+        std::string identifier_string {identifier};
+        add_identifier(identifier_string);
+    }
 }
 
-bool is_goal_token(node_type type) {
+bool is_goal_node(node_type type) {
     using enum node_type;
     return type == GOAL
     || type == CONJUNCTION
@@ -51,7 +52,7 @@ int unification_environment::add_node(node& node) {
         case TERM: return add_structure(node);
         case VARIABLE: return add_variable(node.name);
         default: {
-            if (is_goal_token(node.type)) return add_structure(node);
+            if (is_goal_node(node.type)) return add_structure(node);
         }
     }
     throw std::logic_error("ERROR: Passed node is not a term, variable or goal");
@@ -415,49 +416,24 @@ std::ostream &unification_environment::log_term(std::ostream& stream, int i, int
 
 std::ostream &unification_environment::log_structure(std::ostream &stream, int structure_index, int depth) {
     prolog_structure& structure = term_vector[structure_index].as.structure;
-    std::string& identifier = identifier_vector[structure.identifier_index];
+    int identifier_index = structure.identifier_index;
 
     // Dedicated list handling:
 
-    if (identifier == ".") {
-        stream << '[';
-
-        // Progress through the list:
-        log_term(stream, structure.children[0], depth - 1);
-
-        prolog_structure* current_structure = &structure;
-
-        while (depth > 0) {
-            depth--;
-
-            int next_index = current_structure->children[1];
-            next_index = resolve_bound_variable(next_index);
-
-            if (term_vector[next_index].is_structure()) {
-                current_structure = &term_vector[next_index].as.structure;
-                std::string& id = identifier_vector[current_structure->identifier_index];
-
-                if (id == "[]") {
-                    return stream << ']';
-                }
-
-                if (id == ".") {
-                    stream << ", ";
-                    log_term(stream, current_structure->children[0], depth);
-                    continue;
-                }
-            }
-
-            // Non-cons structure OR variable → treat as tail
-            stream << "| ";
-            log_term(stream, next_index, depth);
-            return stream << ']';
-        }
-
-        return stream << ']';
+    if (identifier_index == get_reserved_identifier_index(".")) {
+        return log_list(stream, structure_index, depth);
     }
 
-    stream << identifier;
+    if (identifier_index == get_reserved_identifier_index(",")) {
+        return log_compound_term(stream, structure_index, depth, ',');
+    }
+
+    if (identifier_index == get_reserved_identifier_index(";")) {
+        return log_compound_term(stream, structure_index, depth, ',');
+    }
+
+
+    stream << identifier_vector[identifier_index];
 
     if (!structure.children.empty()) {
         stream << '(';
@@ -471,6 +447,46 @@ std::ostream &unification_environment::log_structure(std::ostream &stream, int s
 
     return stream;
 }
+
+std::ostream &unification_environment::log_list(std::ostream &stream, int list_index, int depth) {
+    prolog_structure& structure = get_structure(list_index);
+    stream << '[';
+
+    // Progress through the list:
+    log_term(stream, structure.children[0], depth - 1);
+
+    prolog_structure* current_structure = &structure;
+
+    while (depth > 0) {
+        depth--;
+
+        int next_index = current_structure->children[1];
+        next_index = resolve_bound_variable(next_index);
+
+        if (term_vector[next_index].is_structure()) {
+            current_structure = &term_vector[next_index].as.structure;
+            std::string& id = identifier_vector[current_structure->identifier_index];
+
+            if (id == "[]") {
+                return stream << ']';
+            }
+
+            if (id == ".") {
+                stream << ", ";
+                log_term(stream, current_structure->children[0], depth);
+                continue;
+            }
+        }
+
+        // Non-cons structure OR variable → treat as tail
+        stream << "| ";
+        log_term(stream, next_index, depth);
+        return stream << ']';
+    }
+
+    return stream << ']';
+}
+
 
 std::ostream &unification_environment::log_variable(std::ostream &stream, int variable_index, int depth) {
     if (variable_name_map.contains(variable_index)) return stream << variable_name_map[variable_index];
@@ -504,11 +520,19 @@ std::ostream &unification_environment::log_clause(std::ostream &stream, int clau
     return stream << '.';
 }
 
-// Search logic:
+std::ostream &unification_environment::log_compound_term(std::ostream &stream, int term_index, int depth, char seperator) {
+    std::cout << "Not implemented" << '\n';
+    return stream;
+}
 
-#define RED     "\033[31m"
-#define GREEN   "\033[32m"
-#define RESET   "\033[0m"
+std::ostream &unification_environment::log_infix_term(std::ostream &stream, int term_index, int depth, std::string &infix_operator) {
+    std::cout << "Not implemented" << '\n';
+    return stream;
+}
+
+
+
+// Search logic:
 
 void unification_environment::run_interpreter() {
     for (;;) {
@@ -548,14 +572,3 @@ void unification_environment::run_interpreter() {
         std::cout << RED << "false" << RESET << '\n';
     }
 }
-
-#undef RED
-#undef GREEN
-#undef RESET
-
-void unification_environment::link_cuts(int head_index, int term_index) {
-
-}
-
-
-

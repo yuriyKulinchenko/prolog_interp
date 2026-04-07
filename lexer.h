@@ -23,7 +23,15 @@ X(SEMI_COLON)          \
 X(RULE_OPERATOR)       \
 X(PIPE)                \
 X(EXCLAMATION_MARK)    \
-X(QUESTION_MARK)
+X(QUESTION_MARK)       \
+X(PLUS)                \
+X(MINUS)               \
+X(STAR)                \
+X(SLASH)               \
+X(NOT)                 \
+X(EQUAL)               \
+X(NOT_EQUAL)           \
+
 
 
 enum class token_type {
@@ -62,7 +70,8 @@ inline std::ostream& operator<<(std::ostream& stream, token& token) {
 class lexer {
 public:
     explicit lexer(std::string&& source_code):
-    source_code(std::move(source_code)), i(0) {}
+    source_code(std::move(source_code)),
+    i(0), line_number(0), current_line_index(0) {}
 
     std::vector<token> run();
     void reset(std::string&& source_code);
@@ -85,9 +94,13 @@ private:
     static bool is_alphanum(char c);
     static bool is_whitespace(char c);
 
+    std::logic_error lexer_error(const std::string& error_message);
+    std::string fetch_current_line();
+
     std::vector<token> token_vector;
     std::string source_code;
     int i;
+    int line_number;
+    int current_line_index;
 };
-
 #endif //LEXER_H

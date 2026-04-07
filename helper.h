@@ -5,6 +5,10 @@
 #include <fstream>
 #include <unordered_map>
 
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define RESET   "\033[0m"
+
 template<typename T>
 std::ostream& operator<<(std::ostream& stream, std::vector<T>& vector) {
     stream << '[';
@@ -45,6 +49,18 @@ inline std::string read_file(const std::string& path) {
     file.read(buffer.data(), size);
 
     return buffer;
+}
+
+inline std::string generate_select_pointer_string(std::string& s, int i) {
+    int visual = 0;
+    for (int j = 0; j <= i; j++) {
+        if (s[j] == '\t') {
+            visual += 4;
+        } else {
+            visual += 1;
+        }
+    }
+    return std::format("{:>{}}", '^', visual);
 }
 
 #endif //HELPER_H

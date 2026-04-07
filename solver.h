@@ -72,7 +72,7 @@ public:
 
     void log_goal_stack(std::vector<goal> goal_stack_instance);
     void log_history();
-    bool at_end();
+    [[nodiscard]] bool at_end() const;
 
 private:
 

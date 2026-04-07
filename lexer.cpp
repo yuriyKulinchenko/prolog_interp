@@ -6,6 +6,12 @@ std::vector<token> lexer::run() {
     token_vector = {};
     while (!at_end()) {
         char c = advance();
+
+        if (c == '\n') {
+            line_number++;
+            current_line_index = i;
+        }
+
         if (is_whitespace(c)) continue;
         if (c == '%') {
             while (!at_end() && peek() != '\n') {
@@ -13,6 +19,7 @@ std::vector<token> lexer::run() {
             }
             continue;
         }
+
         switch (c) {
             using enum token_type;
 
@@ -66,8 +73,44 @@ std::vector<token> lexer::run() {
                 break;
             }
 
+            case '+': {
+                emit_token(PLUS);
+                break;
+            }
+
+            case '-': {
+                emit_token(MINUS);
+                break;
+            }
+
+            case '*': {
+                emit_token(STAR);
+                break;
+            }
+
+            case '/': {
+                emit_token(SLASH);
+                break;
+            }
+
+            case '=': {
+                emit_token(EQUAL);
+                break;
+            }
+
+            case '\\': {
+                switch (advance()) {
+                    case '=': emit_token(NOT_EQUAL); break;
+                    case '+': emit_token(NOT); break;
+                    default:
+                        throw lexer_error("Expect '\\' to be followed by '=' or '+'");
+                }
+                break;
+            }
+
+
             case ':': {
-                consume('-', "ERROR: Expect '-' to follow ':' in rule operator");
+                consume('-', "Expect '-' to follow ':' in rule operator");
                 emit_token(RULE_OPERATOR);
                 break;
             }
@@ -83,8 +126,7 @@ std::vector<token> lexer::run() {
                 }
 
                 else {
-                    std::cerr << "ERROR: Unsupported character: '" << c << "'\n";
-                    exit(10);
+                    throw lexer_error(std::format("Unsupported character: '{}'", c));
                 }
             }
         }
@@ -93,9 +135,11 @@ std::vector<token> lexer::run() {
 }
 
 void lexer::reset(std::string&& source_code) {
-    this->source_code = std::move(source_code);
+    source_code = std::move(source_code);
     token_vector.clear();
     i = 0;
+    current_line_index = 0;
+    line_number = 0;
 }
 
 
@@ -130,7 +174,7 @@ bool lexer::match(char c) {
 }
 
 char lexer::consume(char c, const std::string& error_message) {
-    if (!match(c)) throw std::logic_error(error_message);
+    if (!match(c)) throw lexer_error(error_message);
     return c;
 }
 
@@ -173,6 +217,21 @@ token& lexer::handle_string(token_type type) {
     }
     token_vector.emplace_back(type, source_code.substr(start, i-start));
     return token_vector[token_vector.size() - 1];
+}
+
+std::logic_error lexer::lexer_error(const std::string& error_message) {
+    std::string current_line = fetch_current_line();
+    std::string select_pointer_string = generate_select_pointer_string(current_line, i - current_line_index);
+    return std::logic_error( std::format("\nLEXER ERROR: {}\n{}\n{}",
+        error_message, current_line, select_pointer_string));
+}
+
+std::string lexer::fetch_current_line() {
+    int j = current_line_index;
+    while (j < source_code.size() && source_code[j] != '\n') j++;
+
+
+    return source_code.substr(current_line_index, j - current_line_index);
 }
 
 

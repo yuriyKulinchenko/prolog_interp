@@ -63,10 +63,9 @@ solver &solver::operator++() {
         int identifier_index = environment.get_structure(goal_index).identifier_index;
 
         // Check for special cases:
-
+        
         switch (identifier_index) {
-            case unification_environment::conjunction_identifier_index: {
-                std::cout << "HERE HERE" << '\n';
+            case unification_environment::get_reserved_identifier_index(","): {
                 goal_stack.pop_back();
                 prolog_structure& conjunction_structure = environment.get_structure(goal_index);
                 for (int child_index: conjunction_structure.children) {
@@ -75,13 +74,15 @@ solver &solver::operator++() {
                 continue;
             }
 
-            case unification_environment::disjunction_identifier_index: {
+            case unification_environment::get_reserved_identifier_index(";"): {
                 // Decision points must be placed:
                 std::vector<int>& disjunction_children = environment.get_structure(goal_index).children;
 
                 // decision point can be placed:
                 if (continuation < disjunction_children.size() - 1) {
-                    history.emplace_back(get_timestamp(), goal_stack, continuation + 1);
+                    // Create copy of goal_stack:
+                    auto goal_stack_copy {goal_stack};
+                    history.emplace_back(get_timestamp(), goal_stack_copy, continuation + 1);
                 }
 
                 // Add the relevant child:
@@ -93,7 +94,7 @@ solver &solver::operator++() {
                 continue;
             }
 
-            case unification_environment::cut_identifier_index: {
+            case unification_environment::get_reserved_identifier_index("!"): {
                 // Remove the cut, adjust the history:
                 int i = peek_goal().cut_barrier;
                 goal_stack.pop_back();
@@ -145,7 +146,7 @@ bool solver::operator*() {
     return goal_stack.empty();
 }
 
-bool solver::at_end() {
+bool solver::at_end() const {
     return found_all;
 }
 
@@ -190,7 +191,7 @@ bool solver::apply_clause(int clause_index, int choice_number, bool add_decision
     prolog_term& body = environment.term_vector[duplicate_clause.body];
 
     if (body.is_structure() &&
-        body.as.structure.identifier_index == unification_environment::conjunction_identifier_index) {
+        body.as.structure.identifier_index == unification_environment::get_reserved_identifier_index(",")) {
         prolog_structure& conjunction = body.as.structure;
         for (int i = static_cast<int>(conjunction.children.size()) - 1; i >= 0; --i) {
             goal_stack.emplace_back(conjunction.children[i], goal_instance.cut_barrier);

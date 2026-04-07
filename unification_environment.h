@@ -65,9 +65,14 @@ public:
     void test_duplication(const std::string& path);
     void run_interpreter();
 
-    static constexpr int conjunction_identifier_index = 0;
-    static constexpr int disjunction_identifier_index = 1;
-    static constexpr int cut_identifier_index = 2;
+    static consteval int get_reserved_identifier_index(std::string_view s) {
+        for (int i = 0; i < reserved_identifiers.size(); i++) {
+            if (reserved_identifiers[i] == s) {
+                return i;
+            }
+        }
+        return -1;
+    }
 
 private:
     prolog_structure& get_structure(int index);
@@ -87,7 +92,6 @@ private:
     void unify_unbound_variables(int i,int j);
     void unify_unbound_variable_term(int i, int j);
     int resolve_bound_variable(int variable_index);
-    void link_cuts(int head_index, int term_index);
 
     void unwind_term_vector(int i);
     void unwind_clause_vector(int i);
@@ -96,9 +100,12 @@ private:
     std::ostream& log_variables(std::ostream& stream);
     std::ostream& log_clauses(std::ostream& stream);
     std::ostream& log_term(std::ostream& stream, int term_index, int depth = max_logging_depth);
+    std::ostream& log_list(std::ostream& stream, int list_index, int depth);
     std::ostream& log_clause(std::ostream& stream, int clause_index, int depth = max_logging_depth);
     std::ostream& log_structure(std::ostream& stream, int structure_index, int depth);
     std::ostream& log_variable(std::ostream& stream, int variable_index, int depth);
+    std::ostream& log_compound_term(std::ostream& stream, int term_index, int depth, char seperator);
+    std::ostream& log_infix_term(std::ostream& stream, int term_index, int depth, std::string& infix_operator);
 
     std::vector<prolog_term> term_vector;
     std::vector<std::string> identifier_vector;
@@ -110,6 +117,9 @@ private:
     std::unordered_map<std::string, int> identifier_map;
 
     static constexpr int max_logging_depth = 20;
+    static constexpr std::array<std::string_view, 5> reserved_identifiers {
+      ",", ";", "!", ".", "[]"
+    };
 
     // For the operation of the interpreter:
     std::vector<int> trail;
