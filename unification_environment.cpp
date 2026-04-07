@@ -547,7 +547,7 @@ void unification_environment::run_interpreter() {
 
         try {
             lexer lexer(std::move(s));
-            parser parser(lexer.run());
+            parser parser(lexer.run(), lexer);
             n = parser.goalExpr();
         } catch (std::logic_error& e) {
             std::cout << "ERROR: Malformed input\n";
