@@ -2,6 +2,7 @@
 #define LEXER_H
 
 #include <string>
+#include <utility>
 #include <vector>
 #include <ostream>
 
@@ -50,8 +51,12 @@ inline std::string token_type_to_string(token_type type) {
 }
 
 struct token {
+    token(token_type type, std::string identifier, int line_start_index):
+    type(type), identifier(std::move(identifier)), line_start_index(line_start_index) {}
+
     token_type type;
     std::string identifier; // Optionally present
+    int line_start_index;
 };
 
 inline bool is_identifier_token(token& token) {
@@ -63,8 +68,7 @@ inline std::ostream& operator<<(std::ostream& stream, token& token) {
     if (is_identifier_token(token)) {
         stream << ", identifier: " << token.identifier;
     }
-    stream << '}';
-    return stream;
+    return stream << ", line_start_index: " << token.line_start_index << '}';
 }
 
 class lexer {
@@ -75,6 +79,7 @@ public:
 
     std::vector<token> run();
     void reset(std::string&& source_code);
+    std::string_view fetch_line_at(int index);
 
 private:
     char peek();
@@ -95,7 +100,7 @@ private:
     static bool is_whitespace(char c);
 
     std::logic_error lexer_error(const std::string& error_message);
-    std::string fetch_current_line();
+    std::string_view fetch_current_line();
 
     std::vector<token> token_vector;
     std::string source_code;

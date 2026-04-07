@@ -207,7 +207,7 @@ bool lexer::at_end() {
 }
 
 void lexer::emit_token(token_type type, const std::string& identifier) {
-    token_vector.emplace_back(type, identifier);
+    token_vector.emplace_back(type, identifier, current_line_index);
 }
 
 token& lexer::handle_string(token_type type) {
@@ -215,23 +215,30 @@ token& lexer::handle_string(token_type type) {
     while(is_alphanum(peek())) {
         advance();
     }
-    token_vector.emplace_back(type, source_code.substr(start, i-start));
+    token_vector.emplace_back(type, source_code.substr(start, i-start), current_line_index);
     return token_vector[token_vector.size() - 1];
 }
 
 std::logic_error lexer::lexer_error(const std::string& error_message) {
-    std::string current_line = fetch_current_line();
+    std::string current_line {fetch_current_line()};
     std::string select_pointer_string = generate_select_pointer_string(current_line, i - current_line_index);
     return std::logic_error( std::format("\nLEXER ERROR: {}\n{}\n{}",
         error_message, current_line, select_pointer_string));
 }
 
-std::string lexer::fetch_current_line() {
-    int j = current_line_index;
-    while (j < source_code.size() && source_code[j] != '\n') j++;
+std::string_view lexer::fetch_current_line() {
+   return fetch_line_at(current_line_index);
+}
 
+std::string_view lexer::fetch_line_at(int index) {
+    size_t start = index;
+    size_t j = start;
 
-    return source_code.substr(current_line_index, j - current_line_index);
+    while (j < source_code.size() && source_code[j] != '\n') {
+        j++;
+    }
+
+    return {source_code.data() + start, j - start};
 }
 
 

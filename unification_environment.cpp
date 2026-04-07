@@ -349,7 +349,7 @@ void unification_environment::test_unification() {
     std::cin >> s2;
 
     lexer lexer {std::move(s1)};
-    parser parser{lexer.run()};
+    parser parser{lexer.run(), lexer};
     node n1 = parser.term();
 
     lexer.reset(std::move(s2));
@@ -372,8 +372,8 @@ void unification_environment::test_unification() {
 
 void unification_environment::test_clauses(const std::string& path) {
     std::string s = read_file(path);
-    lexer lexer(std::move(s));
-    parser parser(lexer.run());
+    lexer lexer{std::move(s)};
+    parser parser{lexer.run(), lexer};
 
     std::vector<node> clauses = parser.program();
     add_clauses(clauses);
@@ -385,8 +385,8 @@ void unification_environment::test_clauses(const std::string& path) {
 
 void unification_environment::test_duplication(const std::string &path) {
     std::string s = read_file(path);
-    lexer lexer(std::move(s));
-    parser parser(lexer.run());
+    lexer lexer{std::move(s)};
+    parser parser{lexer.run(), lexer};
 
     std::vector<node> clauses = parser.program();
     add_clauses(clauses);

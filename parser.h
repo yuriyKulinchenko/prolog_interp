@@ -96,7 +96,8 @@ struct node {
 
 class parser {
 public:
-    parser(std::vector<token>&& token_vector): token_vector(std::move(token_vector)), i(0) {}
+    parser(std::vector<token>&& token_vector, lexer& lexer_instance):
+    token_vector(std::move(token_vector)), i(0), lexer_instance(lexer_instance) {}
 
     std::vector<node> run();
     void reset(std::vector<token>&& token_vector);
@@ -124,9 +125,13 @@ private:
     bool match(token_type type);
     bool at_end();
 
+    std::logic_error parser_error(std::string& error_message, token& token);
+
     int i;
     std::vector<token> token_vector;
     std::vector<node> goal_vector;
+
+    lexer& lexer_instance;
 };
 
 std::ostream& operator<<(std::ostream& stream, node& node);

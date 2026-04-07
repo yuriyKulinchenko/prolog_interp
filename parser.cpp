@@ -1,6 +1,9 @@
 #include "parser.h"
+#include "helper.h"
 #include <iostream>
 #include <optional>
+
+// TODO: std::logic_error is deprecated here
 
 node create_transparent_list(node_type type, std::vector<node> nodes, const char* name = "") {
     if (nodes.size() == 1) {
@@ -170,6 +173,7 @@ token& parser::advance(int n) {
 
 token& parser::consume(token_type type, const std::string& error_message) {
     if (peek().type != type) {
+        // TODO: std::cerr should no longer be used
         std::cerr << "parsing at: " << token_type_to_string(peek().type) << '\n';
         std::cerr << "token index: " << i << '\n';
         throw std::logic_error(error_message);
@@ -229,4 +233,12 @@ std::ostream& operator<<(std::ostream& stream, node& node) {
     lisp_list_log(stream, identifier, node.children);
 
     return stream;
+}
+
+std::logic_error parser::parser_error(std::string &error_message, token& token) {
+    std::string current_line {lexer_instance.fetch_line_at(token.line_start_index)};
+    std::string select_pointer_string =
+        generate_select_pointer_string(current_line, i - token.line_start_index);
+    return std::logic_error( std::format("\nPARSER ERROR: {}\n{}\n{}",
+        error_message, current_line, select_pointer_string));
 }
