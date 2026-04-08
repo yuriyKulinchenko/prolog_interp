@@ -63,13 +63,14 @@ solver &solver::operator++() {
         int identifier_index = environment.get_structure(goal_index).identifier_index;
 
         // Check for special cases:
-        
+
         switch (identifier_index) {
             case unification_environment::get_reserved_identifier_index(","): {
                 goal_stack.pop_back();
                 prolog_structure& conjunction_structure = environment.get_structure(goal_index);
-                for (int child_index: conjunction_structure.children) {
-                    goal_stack.emplace_back(child_index, peek_goal().cut_barrier);
+                int num_children = static_cast<int>(conjunction_structure.children.size());
+                for (int i = num_children - 1; i >= 0; i--){
+                    goal_stack.emplace_back(conjunction_structure.children[i], peek_goal().cut_barrier);
                 }
                 continue;
             }
@@ -193,7 +194,8 @@ bool solver::apply_clause(int clause_index, int choice_number, bool add_decision
     if (body.is_structure() &&
         body.as.structure.identifier_index == unification_environment::get_reserved_identifier_index(",")) {
         prolog_structure& conjunction = body.as.structure;
-        for (int i = static_cast<int>(conjunction.children.size()) - 1; i >= 0; --i) {
+        int num_children = static_cast<int>(conjunction.children.size());
+        for (int i = num_children - 1; i >= 0; --i) {
             goal_stack.emplace_back(conjunction.children[i], goal_instance.cut_barrier);
         }
         } else {

@@ -5,6 +5,8 @@
 #include "unification_environment.h"
 #include "solver.h"
 #include <iostream>
+#include <print>
+#include <algorithm>
 
 #include "helper.h"
 
@@ -414,6 +416,39 @@ std::ostream &unification_environment::log_term(std::ostream& stream, int i, int
     return log_structure(stream, i, depth);
 }
 
+bool unification_environment::is_compound_term(int term_index) {
+    if (term_vector[term_index].is_variable()) return false;
+    switch (get_structure(term_index).identifier_index) {
+        case get_reserved_identifier_index(","):
+        case get_reserved_identifier_index(";"):
+            return true;
+        case -1:
+        default:
+            return false;
+    }
+}
+
+bool unification_environment::is_infix_term(int term_index) {
+    if (term_vector[term_index].is_variable()) return false;
+    switch (get_structure(term_index).identifier_index) {
+        case get_reserved_identifier_index("+"):
+        case get_reserved_identifier_index("-"):
+        case get_reserved_identifier_index("*"):
+        case get_reserved_identifier_index("/"):
+        case get_reserved_identifier_index("is"):
+        case get_reserved_identifier_index("="):
+        case get_reserved_identifier_index("\\="):
+        case get_reserved_identifier_index("\\+"):
+            return true;
+        case -1:
+        default:
+            return false;
+    }
+
+}
+
+
+
 std::ostream &unification_environment::log_structure(std::ostream &stream, int structure_index, int depth) {
     prolog_structure& structure = term_vector[structure_index].as.structure;
     int identifier_index = structure.identifier_index;
@@ -429,7 +464,7 @@ std::ostream &unification_environment::log_structure(std::ostream &stream, int s
     }
 
     if (identifier_index == get_reserved_identifier_index(";")) {
-        return log_compound_term(stream, structure_index, depth, ',');
+        return log_compound_term(stream, structure_index, depth, ';');
     }
 
 
@@ -521,12 +556,38 @@ std::ostream &unification_environment::log_clause(std::ostream &stream, int clau
 }
 
 std::ostream &unification_environment::log_compound_term(std::ostream &stream, int term_index, int depth, char seperator) {
-    std::cout << "Not implemented" << '\n';
-    return stream;
+    std::vector<int>& term_children = get_structure(term_index).children;
+    stream << "(";
+    log_term(stream,term_children[0], depth - 1);
+    for (int i = 1; i < term_children.size(); i++) {
+        stream << seperator << ' ';
+        log_term(stream, term_children[i], depth - 1);
+    }
+    return stream << ")";
 }
 
 std::ostream &unification_environment::log_infix_term(std::ostream &stream, int term_index, int depth, std::string &infix_operator) {
-    std::cout << "Not implemented" << '\n';
+    std::vector<int>& term_children = get_structure(term_index).children;
+    int left_index = term_children[0];
+    int right_index = term_children[1];
+
+    if (is_infix_term(left_index) || is_compound_term(left_index)) {
+        stream << '(';
+        log_term(stream, left_index, depth - 1);
+         stream << ')';
+    } else {
+        log_term(stream, left_index, depth - 1);
+    }
+
+    stream << ' ' << infix_operator << ' ';
+
+    if (is_infix_term(right_index) || is_compound_term(right_index)) {
+        stream << '(';
+        log_term(stream, right_index, depth - 1);
+        stream << ')';
+    } else {
+        log_term(stream, left_index, depth - 1);
+    }
     return stream;
 }
 
@@ -548,9 +609,9 @@ void unification_environment::run_interpreter() {
         try {
             lexer lexer(std::move(s));
             parser parser(lexer.run(), lexer);
-            n = parser.goalExpr();
+            n = parser.query();
         } catch (std::logic_error& e) {
-            std::cout << "ERROR: Malformed input\n";
+            std::println("{}{}{}", RED, e.what(), RESET);
             continue;
         }
 
@@ -561,7 +622,7 @@ void unification_environment::run_interpreter() {
         ++solver;
 
         while (!solver.at_end()) {
-            std::cout << GREEN << "true" << RESET << '\n';
+            std::println("{}true{}", GREEN, RESET);
             log_variables(std::cout);
             std::string command;
             std::getline(std::cin, command);
@@ -569,6 +630,6 @@ void unification_environment::run_interpreter() {
             ++solver;
         }
 
-        std::cout << RED << "false" << RESET << '\n';
+        std::println("{}false{}", RED, RESET);
     }
 }

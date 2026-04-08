@@ -36,7 +36,7 @@ std::vector<node> parser::program() {
 node parser::clause() {
     node term_instance = term();
     if (term_instance.type == node_type::VARIABLE) {
-        throw parser_error("Left side of clause cannot be a variable", previous());
+        throw parser_error("Left side of clause cannot be a variable");
     }
     std::optional<node> goal_instance;
     if (match(token_type::RULE_OPERATOR))
@@ -242,7 +242,7 @@ std::ostream& operator<<(std::ostream& stream, node& node) {
 }
 
 std::logic_error parser::parser_error(const std::string &error_message) {
-    return parser_error(error_message, peek());
+    return parser_error(error_message, previous());
 }
 
 std::logic_error parser::parser_error(const std::string &error_message, const token& token_instance) {
@@ -256,4 +256,13 @@ std::logic_error parser::parser_error(const std::string &error_message, const to
     return std::logic_error(
         std::format("\nPARSER ERROR: {}\n{}",
         error_message, position_error));
+}
+
+node parser::query() {
+    node goal = goalExpr();
+    consume(token_type::DOT, "Expect '.' following query", previous());
+    if (!at_end()) {
+        throw parser_error("Expect nothing following query");
+    }
+    return goal;
 }

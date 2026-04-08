@@ -112,6 +112,7 @@ public:
     node term();
     node list(token& token_instance);
     std::vector<node> elements();
+    node query();
 
     // Helper functions:
 

@@ -107,6 +107,9 @@ private:
     std::ostream& log_compound_term(std::ostream& stream, int term_index, int depth, char seperator);
     std::ostream& log_infix_term(std::ostream& stream, int term_index, int depth, std::string& infix_operator);
 
+    [[nodiscard]] bool is_compound_term(int term_index);
+    [[nodiscard]] bool is_infix_term(int term_index);
+
     std::vector<prolog_term> term_vector;
     std::vector<std::string> identifier_vector;
     std::vector<prolog_clause> clause_vector;
@@ -117,8 +120,11 @@ private:
     std::unordered_map<std::string, int> identifier_map;
 
     static constexpr int max_logging_depth = 20;
-    static constexpr std::array<std::string_view, 5> reserved_identifiers {
-      ",", ";", "!", ".", "[]"
+
+    static constexpr std::array<std::string_view, 14> reserved_identifiers {
+        ",", ";", "!", ".", "[]",
+        "+", "-", "*", "/", "is", "=", "\\=", "\\+",
+        "halt"
     };
 
     // For the operation of the interpreter:
