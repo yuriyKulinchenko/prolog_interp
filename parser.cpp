@@ -96,20 +96,51 @@ node parser::simpleGoal() {
 
 node parser::term() {
     node left = sum();
-    // if (match(token_type::EQUAL) || match(toke))
+    if (match(token_type::EQUAL) || match(token_type::IS)) {
+        std::string identifier_string;
+        if (previous().type == token_type::EQUAL) {
+            identifier_string = "=";
+        } else {
+            identifier_string = "is";
+        }
+        node right = sum();
+        return {node_type::TERM, identifier_string, {left, right}};
+    }
     return left;
 }
 
-// Sum ::= Product (('+'|'-') Product)*
+// Sum ::= Product (('+'|'-') Sum)?
 
 node parser::sum() {
-    return simple_term();
+    node left = product();
+    if (match(token_type::PLUS) || match(token_type::MINUS)) {
+        std::string identifier_string;
+        if (previous().type == token_type::PLUS) {
+            identifier_string = "+";
+        } else {
+            identifier_string = "-";
+        }
+        node right = sum();
+        return {node_type::TERM, identifier_string, {left, right}};
+    }
+    return left;
 }
 
-// Product ::= SimpleTerm (('*'|'/') SimpleTerm)*
+// Product ::= SimpleTerm (('*'|'/') Product)?
 
 node parser::product() {
-    return simple_term();
+    node left = simple_term();
+    if (match(token_type::STAR) || match(token_type::SLASH)) {
+        std::string identifier_string;
+        if (previous().type == token_type::STAR) {
+            identifier_string = "*";
+        } else {
+            identifier_string = "/";
+        }
+        node right = product();
+        return {node_type::TERM, identifier_string, {left, right}};
+    }
+    return left;
 }
 
 // SimpleTerm ::= variable | integer | identifier | identifier '(' Elements ')' | List

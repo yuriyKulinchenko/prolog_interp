@@ -479,8 +479,14 @@ std::ostream &unification_environment::log_term(std::ostream& stream, int i, int
     return stream;
 }
 
+std::ostream &unification_environment::log_bracketed_term(std::ostream &stream, int term_index, int depth) {
+    stream << '(';
+    return log_term(stream, term_index, depth) << ')';
+}
+
+
 bool unification_environment::is_compound_term(int term_index) {
-    if (term_vector[term_index].is_variable()) return false;
+    if (!term_vector[term_index].is_structure()) return false;
     switch (get_structure(term_index).identifier_index) {
         case get_reserved_identifier_index(","):
         case get_reserved_identifier_index(";"):
@@ -492,7 +498,7 @@ bool unification_environment::is_compound_term(int term_index) {
 }
 
 bool unification_environment::is_infix_term(int term_index) {
-    if (term_vector[term_index].is_variable()) return false;
+    if (!term_vector[term_index].is_structure()) return false;
     switch (get_structure(term_index).identifier_index) {
         case get_reserved_identifier_index("+"):
         case get_reserved_identifier_index("-"):
@@ -516,20 +522,21 @@ std::ostream &unification_environment::log_structure(std::ostream &stream, int s
     prolog_structure& structure = get_structure(structure_index);
     int identifier_index = structure.identifier_index;
 
-    // Dedicated list handling:
-
-    if (identifier_index == get_reserved_identifier_index(".")) {
-        return log_list(stream, structure_index, depth);
+    switch (identifier_index) {
+        case get_reserved_identifier_index("."):
+            return log_list(stream, structure_index, depth);
+        case get_reserved_identifier_index(","):
+            return log_compound_term(stream, structure_index, depth, ',');
+        case get_reserved_identifier_index(";"):
+            return log_compound_term(stream, structure_index, depth, ';');
+        case get_reserved_identifier_index("+"):
+            return log_infix_term(stream, structure_index, depth, "+");
+        case get_reserved_identifier_index("is"):
+            return log_infix_term(stream, structure_index, depth, "is");
+        case get_reserved_identifier_index("="):
+            return log_infix_term(stream, structure_index, depth, "=");
+        default:
     }
-
-    if (identifier_index == get_reserved_identifier_index(",")) {
-        return log_compound_term(stream, structure_index, depth, ',');
-    }
-
-    if (identifier_index == get_reserved_identifier_index(";")) {
-        return log_compound_term(stream, structure_index, depth, ';');
-    }
-
 
     stream << identifier_vector[identifier_index];
 
@@ -551,7 +558,12 @@ std::ostream &unification_environment::log_list(std::ostream &stream, int list_i
     stream << '[';
 
     // Progress through the list:
-    log_term(stream, structure.children[0], depth - 1);
+
+    if (is_compound_term(structure.children[0])) {
+        log_bracketed_term(stream, structure.children[0], depth - 1);
+    } else {
+        log_term(stream, structure.children[0], depth - 1);
+    }
 
     prolog_structure* current_structure = &structure;
 
@@ -571,7 +583,11 @@ std::ostream &unification_environment::log_list(std::ostream &stream, int list_i
 
             if (id == ".") {
                 stream << ", ";
-                log_term(stream, current_structure->children[0], depth);
+                if (is_compound_term(current_structure->children[0])) {
+                    log_bracketed_term(stream, current_structure->children[0], depth);
+                } else {
+                    log_term(stream, current_structure->children[0], depth);
+                }
                 continue;
             }
         }
@@ -620,24 +636,31 @@ std::ostream &unification_environment::log_clause(std::ostream &stream, int clau
 
 std::ostream &unification_environment::log_compound_term(std::ostream &stream, int term_index, int depth, char seperator) {
     std::vector<int>& term_children = get_structure(term_index).children;
-    stream << "(";
+    if (is_compound_term(term_children[0])) {
+        log_bracketed_term(stream, term_children[0], depth - 1);
+    } else {
+        log_term(stream, term_children[0], depth - 1);
+    }
+
     log_term(stream,term_children[0], depth - 1);
     for (int i = 1; i < term_children.size(); i++) {
         stream << seperator << ' ';
-        log_term(stream, term_children[i], depth - 1);
+        if (is_compound_term(term_children[i])) {
+            log_bracketed_term(stream, term_children[i], depth - 1);
+        } else {
+            log_term(stream, term_children[i], depth - 1);
+        }
     }
-    return stream << ")";
+    return stream;
 }
 
-std::ostream &unification_environment::log_infix_term(std::ostream &stream, int term_index, int depth, std::string &infix_operator) {
+std::ostream &unification_environment::log_infix_term(std::ostream &stream, int term_index, int depth, const std::string &infix_operator) {
     std::vector<int>& term_children = get_structure(term_index).children;
     int left_index = term_children[0];
     int right_index = term_children[1];
 
     if (is_infix_term(left_index) || is_compound_term(left_index)) {
-        stream << '(';
-        log_term(stream, left_index, depth - 1);
-         stream << ')';
+        log_bracketed_term(stream, left_index, depth - 1);
     } else {
         log_term(stream, left_index, depth - 1);
     }
@@ -645,9 +668,7 @@ std::ostream &unification_environment::log_infix_term(std::ostream &stream, int 
     stream << ' ' << infix_operator << ' ';
 
     if (is_infix_term(right_index) || is_compound_term(right_index)) {
-        stream << '(';
-        log_term(stream, right_index, depth - 1);
-        stream << ')';
+        log_bracketed_term(stream, right_index, depth - 1);
     } else {
         log_term(stream, left_index, depth - 1);
     }

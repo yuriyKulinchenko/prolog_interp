@@ -29,9 +29,9 @@ SimpleGoal ::= Term
 
 Term ::= Sum (('=','is') Sum)?
 
-Sum ::= Product (('+'|'-') Product)*
+Sum ::= Product (('+'|'-') Sum)?
 
-Product ::= SimpleTerm (('*'|'/') SimpleTerm)*
+Product ::= SimpleTerm (('*'|'/') Product)?
 
 SimpleTerm ::= variable
        | integer

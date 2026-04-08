@@ -107,13 +107,14 @@ private:
     std::ostream& log_clauses(std::ostream& stream);
 
     std::ostream& log_term(std::ostream& stream, int term_index, int depth = max_logging_depth);
+    std::ostream& log_bracketed_term(std::ostream& stream, int term_index, int depth);
     std::ostream& log_structure(std::ostream& stream, int structure_index, int depth);
     std::ostream& log_variable(std::ostream& stream, int variable_index);
 
     std::ostream& log_list(std::ostream& stream, int list_index, int depth);
     std::ostream& log_clause(std::ostream& stream, int clause_index, int depth = max_logging_depth);
     std::ostream& log_compound_term(std::ostream& stream, int term_index, int depth, char seperator);
-    std::ostream& log_infix_term(std::ostream& stream, int term_index, int depth, std::string& infix_operator);
+    std::ostream& log_infix_term(std::ostream& stream, int term_index, int depth, const std::string& infix_operator);
 
     [[nodiscard]] bool is_compound_term(int term_index);
     [[nodiscard]] bool is_infix_term(int term_index);
