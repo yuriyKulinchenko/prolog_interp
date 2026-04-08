@@ -1,6 +1,5 @@
 #include "parser.h"
 #include "helper.h"
-#include <iostream>
 #include <optional>
 
 // TODO: std::logic_error is deprecated here
@@ -93,11 +92,35 @@ node parser::simpleGoal() {
     return term();
 }
 
-// Term ::= variable | identifier | identifier '(' Elements ')' | List
+// Term ::= Sum (('=','is') Sum)?
 
 node parser::term() {
+    node left = sum();
+    // if (match(token_type::EQUAL) || match(toke))
+    return left;
+}
+
+// Sum ::= Product (('+'|'-') Product)*
+
+node parser::sum() {
+    return simple_term();
+}
+
+// Product ::= SimpleTerm (('*'|'/') SimpleTerm)*
+
+node parser::product() {
+    return simple_term();
+}
+
+// SimpleTerm ::= variable | integer | identifier | identifier '(' Elements ')' | List
+
+node parser::simple_term() {
     if (check(token_type::VARIABLE)) {
         return {node_type::VARIABLE, advance().identifier};
+    }
+
+    if (check(token_type::INTEGER)) {
+        return {node_type::INTEGER_TERM, advance().integer};
     }
 
     // Parsing identifier:

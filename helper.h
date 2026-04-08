@@ -4,6 +4,7 @@
 #include <vector>
 #include <fstream>
 #include <unordered_map>
+#include <format>
 
 #define RED     "\033[31m"
 #define GREEN   "\033[32m"
@@ -69,6 +70,11 @@ inline std::string generate_position_error_string(std::string& s, int i, int lin
         std::string padding = std::string(line_number_string.size(), ' ');
         return std::format("{} │{}\n{} │{}",
             line_number_string, s, padding, pointer);
+}
+
+template<typename... Args>
+std::logic_error formatted_error(std::format_string<Args...> fmt, Args&&... args) {
+    return std::logic_error(std::format(fmt, std::forward<Args>(args)...));
 }
 
 #endif //HELPER_H

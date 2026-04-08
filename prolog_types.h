@@ -24,14 +24,17 @@ struct prolog_structure {
 };
 
 enum class prolog_term_type {
-    VARIABLE, STRUCTURE
+    VARIABLE, STRUCTURE, INTEGER
 };
+
+std::string prolog_term_type_to_string(prolog_term_type type);
 
 struct prolog_term {
     explicit prolog_term(prolog_term_type type);
+    explicit prolog_term(int integer);
 
-    prolog_term(const prolog_term&) = delete;
-    prolog_term& operator=(const prolog_term&) = delete;
+    prolog_term(const prolog_term&);
+    prolog_term& operator=(const prolog_term&);
 
     prolog_term(prolog_term&& other) noexcept;
     prolog_term& operator=(prolog_term&& other) noexcept;
@@ -41,12 +44,15 @@ struct prolog_term {
     [[nodiscard]] bool is_variable() const;
     [[nodiscard]] bool is_unbound_variable() const;
     [[nodiscard]] bool is_structure() const;
+    [[nodiscard]] bool is_integer() const;
+    [[nodiscard]] bool is_ground() const;
 
     prolog_term_type type;
 
     union storage {
         prolog_structure structure;
         prolog_variable variable;
+        int integer {};
 
         storage();
         ~storage();

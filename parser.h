@@ -27,7 +27,14 @@ SimpleGoal ::= Term
              | '(' GoalExpr ')'
              | '!'
 
-Term ::= variable
+Term ::= Sum (('=','is') Sum)?
+
+Sum ::= Product (('+'|'-') Product)*
+
+Product ::= SimpleTerm (('*'|'/') SimpleTerm)*
+
+SimpleTerm ::= variable
+       | integer
        | identifier
        | identifier '(' Elements ')'
        | List
@@ -42,57 +49,6 @@ For now, the assumption is that only a set of rules will be parsed.
 The querying will be done through the terminal
 
  */
-
-#define NODE_TYPE_LIST(X)  \
-X(CLAUSE)                  \
-X(GOAL)                    \
-X(TERM)                    \
-X(VARIABLE)                \
-X(CONJUNCTION)             \
-X(DISJUNCTION)             \
-X(CUT)
-
-
-enum class node_type {
-#define X(name) name,
-    NODE_TYPE_LIST(X)
-#undef X
-};
-
-inline std::string node_type_to_string(node_type type) {
-    switch (type) {
-#define X(name) case node_type::name: return #name;
-        NODE_TYPE_LIST(X)
-#undef X
-    }
-    return "UNKNOWN";
-}
-
-inline std::string node_type_to_short_string(node_type type) {
-    switch (type) {
-        using enum node_type;
-        case DISJUNCTION: return "OR";
-        case CONJUNCTION: return "AND";
-        default: return node_type_to_string(type);
-
-    }
-}
-
-struct node {
-    node() = default;
-    explicit node(node_type type): type(type) {}
-    node(node_type type, std::string name):
-        type(type), name(std::move(name)) {}
-    node(node_type type, std::vector<node> children):
-        type(type), children(std::move(children)) {}
-    node(node_type type, std::string name, std::vector<node> children):
-        type(type), name(std::move(name)), children(std::move(children)) {}
-
-    node_type type;
-    std::string name; // Optionally present
-    std::vector<node> children;
-};
-
 
 class parser {
 public:
@@ -110,6 +66,9 @@ public:
     node conjunction();
     node simpleGoal();
     node term();
+    node sum();
+    node product();
+    node simple_term();
     node list(token& token_instance);
     std::vector<node> elements();
     node query();

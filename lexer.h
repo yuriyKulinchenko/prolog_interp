@@ -1,86 +1,10 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include <string>
-#include <utility>
+// #define LEXER_DEBUG
+
 #include <vector>
-#include <ostream>
-
-
-
-// Tokens:
-// SYMBOL, VARIABLE, PAREN_OPEN, PAREN_CLOSED, SQUARE_OPEN, SQUARE_CLOSED,
-
-#define TOKEN_TYPE_LIST(X) \
-X(SYMBOL)              \
-X(VARIABLE)            \
-X(PAREN_OPEN)          \
-X(PAREN_CLOSED)        \
-X(SQUARE_OPEN)         \
-X(SQUARE_CLOSED)       \
-X(DOT)                 \
-X(COMMA)               \
-X(SEMI_COLON)          \
-X(RULE_OPERATOR)       \
-X(PIPE)                \
-X(EXCLAMATION_MARK)    \
-X(QUESTION_MARK)       \
-X(PLUS)                \
-X(MINUS)               \
-X(STAR)                \
-X(SLASH)               \
-X(NOT)                 \
-X(EQUAL)               \
-X(NOT_EQUAL)           \
-
-
-
-enum class token_type {
-#define X(name) name,
-    TOKEN_TYPE_LIST(X)
-#undef X
-};
-
-inline std::string token_type_to_string(token_type type) {
-    switch (type) {
-#define X(name) case token_type::name: return #name;
-        TOKEN_TYPE_LIST(X)
-#undef X
-    }
-    return "UNKNOWN";
-}
-
-struct text_position {
-    text_position(int line_start_index, int pointer_index, int line_number):
-    line_start_index(line_start_index),
-    pointer_index(pointer_index),
-    line_number(line_number) {}
-
-    int line_start_index;
-    int pointer_index;
-    int line_number;
-};
-
-struct token {
-    token(token_type type, std::string identifier, text_position position):
-    type(type), identifier(std::move(identifier)), position(position) {}
-
-    token_type type;
-    std::string identifier; // Optionally present
-    text_position position;
-};
-
-inline bool is_identifier_token(token& token) {
-    return token.type == token_type::SYMBOL || token.type == token_type::VARIABLE;
-}
-
-inline std::ostream& operator<<(std::ostream& stream, token& token) {
-    stream << "{type: " << token_type_to_string(token.type);
-    if (is_identifier_token(token)) {
-        stream << ", identifier: " << token.identifier;
-    }
-    return stream << ", line_start_index: " << token.position.line_number << '}';
-}
+#include "frontend_types.h"
 
 class lexer {
 public:
@@ -101,8 +25,14 @@ private:
     bool check(char c);
     bool match(char c);
     bool at_end();
-    void emit_token(token_type type, const std::string& identifier = "");
-    token& handle_string(token_type type);
+
+    void emit_token(token_type type, const std::string& identifier);
+    void emit_token(token_type type, int number);
+    void emit_token(token_type type);
+
+    void emit_string();
+    void emit_integer();
+
     static bool is_alpha_lower(char c);
     static bool is_alpha_capital(char c);
     static bool is_alpha(char c);

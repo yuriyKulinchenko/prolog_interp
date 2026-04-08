@@ -7,6 +7,7 @@
 #include "prolog_types.h"
 
 // #define UNIFICATION_DEBUG
+#define PERFORM_UNIFICATION_TYPE_CHECK
 
 /*
 
@@ -75,22 +76,27 @@ public:
     }
 
 private:
+    template<prolog_term_type type>
+    void validate_type(int index);
     prolog_structure& get_structure(int index);
     prolog_variable& get_variable(int index);
     prolog_clause& get_clause(int index);
+    int get_integer(int index);
 
     int add_structure(node& node_instance);
+    int add_integer(int integer);
     int add_variable(std::string& variable_name);
     int add_identifier(const std::string& name);
+
     int duplicate_clause(int clause_index);
     int duplicate_term(int index, std::unordered_map<int, int>& variable_map);
     int duplicate_structure(int index, std::unordered_map<int, int>& variable_map);
     int duplicate_variable(int index, std::unordered_map<int, int>& variable_map);
 
     bool unify(int i, int j);
-    bool unify_structures(int i, int j);
+    bool unify_ground(int i, int j);
     void unify_unbound_variables(int i,int j);
-    void unify_unbound_variable_term(int i, int j);
+    void unify_unbound_variable_ground(int i, int j);
     int resolve_bound_variable(int variable_index);
 
     void unwind_term_vector(int i);
@@ -99,11 +105,13 @@ private:
 
     std::ostream& log_variables(std::ostream& stream);
     std::ostream& log_clauses(std::ostream& stream);
+
     std::ostream& log_term(std::ostream& stream, int term_index, int depth = max_logging_depth);
+    std::ostream& log_structure(std::ostream& stream, int structure_index, int depth);
+    std::ostream& log_variable(std::ostream& stream, int variable_index);
+
     std::ostream& log_list(std::ostream& stream, int list_index, int depth);
     std::ostream& log_clause(std::ostream& stream, int clause_index, int depth = max_logging_depth);
-    std::ostream& log_structure(std::ostream& stream, int structure_index, int depth);
-    std::ostream& log_variable(std::ostream& stream, int variable_index, int depth);
     std::ostream& log_compound_term(std::ostream& stream, int term_index, int depth, char seperator);
     std::ostream& log_infix_term(std::ostream& stream, int term_index, int depth, std::string& infix_operator);
 

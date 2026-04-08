@@ -116,13 +116,14 @@ std::vector<token> lexer::run() {
             }
 
             default: {
-                // Either variable or symbol:
+                // Either variable, symbol or integer:
                 i--;
-                if (is_alpha_lower(c) || is_num(c)) {
-                    token& t = handle_string(SYMBOL);
-                    if (t.identifier == "_") t.type = VARIABLE;
-                } else if (is_alpha_capital(c)) {
-                    handle_string(VARIABLE);
+                if (is_alpha(c)) {
+                    emit_string();
+                }
+
+                else if (is_num(c)) {
+                    emit_integer();
                 }
 
                 else {
@@ -131,6 +132,9 @@ std::vector<token> lexer::run() {
             }
         }
     }
+#ifdef LEXER_DEBUG
+    std::cout << token_vector << '\n';
+#endif
     return token_vector;
 }
 
@@ -210,13 +214,48 @@ void lexer::emit_token(token_type type, const std::string& identifier) {
     token_vector.emplace_back(type, identifier, get_text_position());
 }
 
-token& lexer::handle_string(token_type type) {
+void lexer::emit_token(token_type type, int number) {
+    token_vector.emplace_back(type, number, get_text_position());
+}
+
+void lexer::emit_token(token_type type) {
+    token_vector.emplace_back(type, get_text_position());
+}
+
+void lexer::emit_string() {
     int start = i;
     while(is_alphanum(peek())) {
         advance();
     }
-    emit_token(type, source_code.substr(start, i - start));
-    return token_vector[token_vector.size() - 1];
+    std::string identifier = source_code.substr(start, i - start);
+
+    token_type type;
+
+    if (identifier == "_") {
+        type = token_type::VARIABLE;
+    } else if (identifier == "is") {
+        emit_token(token_type::IS);
+        return;
+    } else {
+        type = is_alpha_capital(source_code[start]) ?
+        token_type::VARIABLE : token_type::SYMBOL;
+    }
+
+    emit_token(type, identifier);
+}
+
+void lexer::emit_integer() {
+    int start = i;
+    while (is_num(peek())) {
+        advance();
+    }
+
+    if (is_alpha(peek())) {
+        throw lexer_error("Improperly formed integer");
+    }
+
+    int integer = std::stoi(source_code.substr(start, i - start));
+    emit_token(token_type::INTEGER, integer);
 }
 
 std::logic_error lexer::lexer_error(const std::string& error_message) {

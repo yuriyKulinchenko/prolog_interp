@@ -60,6 +60,16 @@ solver &solver::operator++() {
         // Identify the goal, and attempt to make progress:
 
         int goal_index = environment.resolve_bound_variable(peek_goal().term_index);
+        if (environment.term_vector[goal_index].is_integer()) {
+            // Failure state:
+            if (history.empty()) {
+                found_all = true;
+                return *this;
+            }
+
+            continuation = restore_decision_point();
+
+        }
         int identifier_index = environment.get_structure(goal_index).identifier_index;
 
         // Check for special cases:
@@ -101,6 +111,10 @@ solver &solver::operator++() {
                 goal_stack.pop_back();
                 history.erase(history.begin() + i, history.end());
                 continue;
+            }
+
+            case unification_environment::get_reserved_identifier_index("halt"): {
+                throw std::logic_error("EXECUTION HALTED");
             }
 
             default:
