@@ -36,12 +36,12 @@ std::vector<node> parser::program() {
 node parser::clause() {
     node term_instance = term();
     if (term_instance.type == node_type::VARIABLE) {
-        throw std::logic_error("ERROR: Left side of clause cannot be a variable");
+        throw parser_error("Left side of clause cannot be a variable", previous());
     }
     std::optional<node> goal_instance;
     if (match(token_type::RULE_OPERATOR))
         goal_instance = goalExpr();
-    consume(token_type::DOT, "ERROR: Expect '.' after clause");
+    consume(token_type::DOT, "Expect '.' after clause", previous());
 
     node clause_instance = {node_type::CLAUSE, {term_instance}};
     if (goal_instance) clause_instance.children.push_back(*goal_instance);
@@ -84,8 +84,9 @@ node parser::simpleGoal() {
     }
 
     if (match(token_type::PAREN_OPEN)) {
+        token& open_paren = previous();
         node inner = goalExpr();
-        consume(token_type::PAREN_CLOSED, "ERROR: Unmatched bracket");
+        consume(token_type::PAREN_CLOSED, "Unmatched bracket", open_paren);
         return inner;
     }
 
@@ -104,8 +105,9 @@ node parser::term() {
         std::string identifier_name = advance().identifier;
         std::optional<std::vector<node>> nodes;
         if (match(token_type::PAREN_OPEN)) {
+            token& open_paren = previous();
             nodes = elements();
-            consume(token_type::PAREN_CLOSED, "ERROR: Unmatched bracket");
+            consume(token_type::PAREN_CLOSED, "Unmatched bracket", open_paren);
         }
 
         node term_instance = {node_type::TERM, identifier_name};
@@ -116,13 +118,13 @@ node parser::term() {
     // Parsing list:
 
     if (match(token_type::SQUARE_OPEN)) {
-        return list();
+        return list(previous());
     }
 
-    throw std::logic_error("ERROR: Unrecognized term: term must be a variable, identifier or list");
+    throw parser_error("Unrecognized term: term must be a variable, identifier or list");
 }
 
-node parser::list() {
+node parser::list(token& token_instance) {
     // Empty list:
     if (match(token_type::SQUARE_CLOSED)) {
         return {node_type::TERM, "[]"};
@@ -143,7 +145,9 @@ node parser::list() {
         tail->emplace_back(node_type::TERM, "[]");
     }
 
-    consume(token_type::SQUARE_CLOSED, "ERROR: unmatched square bracket");
+
+
+    consume(token_type::SQUARE_CLOSED, "unmatched square bracket", token_instance);
     return head;
 }
 
@@ -159,6 +163,11 @@ token& parser::peek() {
     return token_vector[i];
 };
 
+token &parser::previous() {
+    return token_vector[i-1];
+}
+
+
 token& parser::next() {
     return token_vector[i + 1];
 };
@@ -171,12 +180,9 @@ token& parser::advance(int n) {
     return token_vector[i+=n];
 };
 
-token& parser::consume(token_type type, const std::string& error_message) {
+token& parser::consume(token_type type, const std::string& error_message, token& erroneous_token) {
     if (peek().type != type) {
-        // TODO: std::cerr should no longer be used
-        std::cerr << "parsing at: " << token_type_to_string(peek().type) << '\n';
-        std::cerr << "token index: " << i << '\n';
-        throw std::logic_error(error_message);
+        throw parser_error(error_message, erroneous_token);
     }
     return advance();
 };
@@ -235,10 +241,19 @@ std::ostream& operator<<(std::ostream& stream, node& node) {
     return stream;
 }
 
-std::logic_error parser::parser_error(std::string &error_message, token& token) {
-    std::string current_line {lexer_instance.fetch_line_at(token.line_start_index)};
-    std::string select_pointer_string =
-        generate_select_pointer_string(current_line, i - token.line_start_index);
-    return std::logic_error( std::format("\nPARSER ERROR: {}\n{}\n{}",
-        error_message, current_line, select_pointer_string));
+std::logic_error parser::parser_error(const std::string &error_message) {
+    return parser_error(error_message, peek());
+}
+
+std::logic_error parser::parser_error(const std::string &error_message, const token& token_instance) {
+    std::string current_line {lexer_instance.fetch_line_at(token_instance.position.line_start_index)};
+
+    std::string position_error = generate_position_error_string(
+        current_line,
+        token_instance.position.pointer_index - token_instance.position.line_start_index,
+        token_instance.position.line_number);
+
+    return std::logic_error(
+        std::format("\nPARSER ERROR: {}\n{}",
+        error_message, position_error));
 }

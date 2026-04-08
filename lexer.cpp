@@ -207,7 +207,7 @@ bool lexer::at_end() {
 }
 
 void lexer::emit_token(token_type type, const std::string& identifier) {
-    token_vector.emplace_back(type, identifier, current_line_index);
+    token_vector.emplace_back(type, identifier, get_text_position());
 }
 
 token& lexer::handle_string(token_type type) {
@@ -215,15 +215,21 @@ token& lexer::handle_string(token_type type) {
     while(is_alphanum(peek())) {
         advance();
     }
-    token_vector.emplace_back(type, source_code.substr(start, i-start), current_line_index);
+    emit_token(type, source_code.substr(start, i - start));
     return token_vector[token_vector.size() - 1];
 }
 
 std::logic_error lexer::lexer_error(const std::string& error_message) {
     std::string current_line {fetch_current_line()};
-    std::string select_pointer_string = generate_select_pointer_string(current_line, i - current_line_index);
-    return std::logic_error( std::format("\nLEXER ERROR: {}\n{}\n{}",
-        error_message, current_line, select_pointer_string));
+
+    std::string position_error = generate_position_error_string(
+        current_line,
+        i - current_line_index,
+        line_number);
+
+    return std::logic_error(
+        std::format("\nLEXER ERROR: {}\n{}",
+        error_message, position_error));
 }
 
 std::string_view lexer::fetch_current_line() {
@@ -240,6 +246,11 @@ std::string_view lexer::fetch_line_at(int index) {
 
     return {source_code.data() + start, j - start};
 }
+
+text_position lexer::get_text_position() const {
+    return {current_line_index, i - 1, line_number};
+}
+
 
 
 

@@ -50,13 +50,24 @@ inline std::string token_type_to_string(token_type type) {
     return "UNKNOWN";
 }
 
+struct text_position {
+    text_position(int line_start_index, int pointer_index, int line_number):
+    line_start_index(line_start_index),
+    pointer_index(pointer_index),
+    line_number(line_number) {}
+
+    int line_start_index;
+    int pointer_index;
+    int line_number;
+};
+
 struct token {
-    token(token_type type, std::string identifier, int line_start_index):
-    type(type), identifier(std::move(identifier)), line_start_index(line_start_index) {}
+    token(token_type type, std::string identifier, text_position position):
+    type(type), identifier(std::move(identifier)), position(position) {}
 
     token_type type;
     std::string identifier; // Optionally present
-    int line_start_index;
+    text_position position;
 };
 
 inline bool is_identifier_token(token& token) {
@@ -68,14 +79,14 @@ inline std::ostream& operator<<(std::ostream& stream, token& token) {
     if (is_identifier_token(token)) {
         stream << ", identifier: " << token.identifier;
     }
-    return stream << ", line_start_index: " << token.line_start_index << '}';
+    return stream << ", line_start_index: " << token.position.line_number << '}';
 }
 
 class lexer {
 public:
     explicit lexer(std::string&& source_code):
     source_code(std::move(source_code)),
-    i(0), line_number(0), current_line_index(0) {}
+    i(0), line_number(1), current_line_index(0) {}
 
     std::vector<token> run();
     void reset(std::string&& source_code);
@@ -101,6 +112,7 @@ private:
 
     std::logic_error lexer_error(const std::string& error_message);
     std::string_view fetch_current_line();
+    [[nodiscard]] text_position get_text_position() const;
 
     std::vector<token> token_vector;
     std::string source_code;

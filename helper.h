@@ -63,4 +63,12 @@ inline std::string generate_select_pointer_string(std::string& s, int i) {
     return std::format("{:>{}}", '^', visual);
 }
 
+inline std::string generate_position_error_string(std::string& s, int i, int line_number) {
+        std::string pointer = generate_select_pointer_string(s, i);
+        std::string line_number_string = std::to_string(line_number);
+        std::string padding = std::string(line_number_string.size(), ' ');
+        return std::format("{} │{}\n{} │{}",
+            line_number_string, s, padding, pointer);
+}
+
 #endif //HELPER_H

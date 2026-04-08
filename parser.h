@@ -110,22 +110,24 @@ public:
     node conjunction();
     node simpleGoal();
     node term();
-    node list();
+    node list(token& token_instance);
     std::vector<node> elements();
 
     // Helper functions:
 
 private:
     token& peek();
+    token& previous();
     token& next();
     token& advance();
     token& advance(int n);
-    token& consume(token_type type, const std::string& error_message);
+    token& consume(token_type type, const std::string& error_message, token& erroneous_token);
     bool check(token_type type);
     bool match(token_type type);
     bool at_end();
 
-    std::logic_error parser_error(std::string& error_message, token& token);
+    std::logic_error parser_error(const std::string& error_message);
+    std::logic_error parser_error(const std::string& error_message, const token& token_instance);
 
     int i;
     std::vector<token> token_vector;
