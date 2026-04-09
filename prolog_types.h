@@ -2,6 +2,7 @@
 #define PROLOG_TYPES_H
 
 #include <vector>
+#include <variant>
 
 enum class prolog_variable_type {
     BOUND, UNBOUND
@@ -33,33 +34,18 @@ struct prolog_term {
     explicit prolog_term(prolog_term_type type);
     explicit prolog_term(int integer);
 
-    prolog_term(const prolog_term&);
-    prolog_term& operator=(const prolog_term&);
-
-    prolog_term(prolog_term&& other) noexcept;
-    prolog_term& operator=(prolog_term&& other) noexcept;
-
-    ~prolog_term();
+    prolog_structure& structure();
+    prolog_variable& variable();
+    int integer();
 
     [[nodiscard]] bool is_variable() const;
-    [[nodiscard]] bool is_unbound_variable() const;
+    [[nodiscard]] bool is_unbound_variable();
     [[nodiscard]] bool is_structure() const;
     [[nodiscard]] bool is_integer() const;
     [[nodiscard]] bool is_ground() const;
 
     prolog_term_type type;
-
-    union storage {
-        prolog_structure structure;
-        prolog_variable variable;
-        int integer {};
-
-        storage();
-        ~storage();
-    } as;
-
-private:
-    void destroy_active();
+    std::variant<int, prolog_structure, prolog_variable> tagged_union;
 };
 
 struct prolog_clause {

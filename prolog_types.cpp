@@ -18,159 +18,51 @@ prolog_structure::prolog_structure()
 prolog_structure::prolog_structure(int index)
     : identifier_index(index) {}
 
-// storage
+// prolog_term
 
-prolog_term::storage::storage() {}
-prolog_term::storage::~storage() {}
-
-void prolog_term::destroy_active() {
+prolog_term::prolog_term(prolog_term_type type): type(type) {
     switch (type) {
         case prolog_term_type::STRUCTURE:
-            as.structure.~prolog_structure();
+            tagged_union = prolog_structure();
             break;
 
         case prolog_term_type::VARIABLE:
-            as.variable.~prolog_variable();
+            tagged_union = prolog_variable();
             break;
 
         case prolog_term_type::INTEGER:
+            tagged_union = 0;
             break;
     }
 }
 
-// constructors
-
-prolog_term::prolog_term(prolog_term_type type)
-    : type(type) {
-    switch (type) {
-        case prolog_term_type::STRUCTURE:
-            new (&as.structure) prolog_structure();
-            break;
-
-        case prolog_term_type::VARIABLE:
-            new (&as.variable) prolog_variable();
-            break;
-
-        case prolog_term_type::INTEGER:
-            as.integer = 0;
-            break;
-    }
+int prolog_term::integer() {
+    return std::get<int>(tagged_union);
 }
+
+prolog_structure &prolog_term::structure() {
+    return std::get<prolog_structure>(tagged_union);
+}
+
+prolog_variable &prolog_term::variable() {
+    return std::get<prolog_variable>(tagged_union);
+}
+
+
+
 
 prolog_term::prolog_term(int integer)
     : type(prolog_term_type::INTEGER) {
-    as.integer = integer;
+    tagged_union = integer;
 }
-
-
-// copy constructor
-
-prolog_term::prolog_term(const prolog_term& other)
-    : type(other.type) {
-    switch (type) {
-        case prolog_term_type::STRUCTURE:
-            new (&as.structure) prolog_structure(other.as.structure);
-            break;
-
-        case prolog_term_type::VARIABLE:
-            new (&as.variable) prolog_variable(other.as.variable);
-            break;
-
-        case prolog_term_type::INTEGER:
-            as.integer = other.as.integer;
-            break;
-    }
-}
-
-
-// move constructor
-
-prolog_term::prolog_term(prolog_term&& other) noexcept
-    : type(other.type) {
-    switch (type) {
-        case prolog_term_type::STRUCTURE:
-            new (&as.structure) prolog_structure(std::move(other.as.structure));
-            break;
-
-        case prolog_term_type::VARIABLE:
-            new (&as.variable) prolog_variable(std::move(other.as.variable));
-            break;
-
-        case prolog_term_type::INTEGER:
-            as.integer = other.as.integer;
-            break;
-    }
-}
-
-// copy assignment
-
-prolog_term& prolog_term::operator=(const prolog_term& other) {
-    if (this == &other) {
-        return *this;
-    }
-
-    destroy_active();
-    type = other.type;
-
-    switch (type) {
-        case prolog_term_type::STRUCTURE:
-            new (&as.structure) prolog_structure(other.as.structure);
-            break;
-
-        case prolog_term_type::VARIABLE:
-            new (&as.variable) prolog_variable(other.as.variable);
-            break;
-
-        case prolog_term_type::INTEGER:
-            as.integer = other.as.integer;
-            break;
-    }
-
-    return *this;
-}
-
-// move assignment
-
-prolog_term& prolog_term::operator=(prolog_term&& other) noexcept {
-    if (this == &other) {
-        return *this;
-    }
-
-    destroy_active();
-    type = other.type;
-
-    switch (type) {
-        case prolog_term_type::STRUCTURE:
-            new (&as.structure) prolog_structure(std::move(other.as.structure));
-            break;
-
-        case prolog_term_type::VARIABLE:
-            new (&as.variable) prolog_variable(std::move(other.as.variable));
-            break;
-
-        case prolog_term_type::INTEGER:
-            as.integer = other.as.integer;
-            break;
-    }
-
-    return *this;
-}
-
-// destructor
-
-prolog_term::~prolog_term() {
-    destroy_active();
-}
-
-// helpers
 
 bool prolog_term::is_variable() const {
     return type == prolog_term_type::VARIABLE;
 }
 
-bool prolog_term::is_unbound_variable() const {
+bool prolog_term::is_unbound_variable() {
     return is_variable() &&
-        as.variable.type == prolog_variable_type::UNBOUND;
+        variable().type == prolog_variable_type::UNBOUND;
 }
 
 bool prolog_term::is_structure() const {

@@ -165,6 +165,11 @@ solver &solver::operator++() {
                 continue;
             }
 
+            case unification_environment::get_reserved_identifier_index("fail"): {
+                BACKTRACK();
+                continue;
+            }
+
             case unification_environment::get_reserved_identifier_index("halt"): {
                 throw std::logic_error("EXECUTION HALTED");
             }
@@ -252,8 +257,8 @@ bool solver::apply_clause(int clause_index, int choice_number, bool add_decision
     prolog_term& body = environment.term_vector[duplicate_clause.body];
 
     if (body.is_structure() &&
-        body.as.structure.identifier_index == unification_environment::get_reserved_identifier_index(",")) {
-        prolog_structure& conjunction = body.as.structure;
+        body.structure().identifier_index == unification_environment::get_reserved_identifier_index(",")) {
+        prolog_structure& conjunction = body.structure();
         int num_children = static_cast<int>(conjunction.children.size());
         for (int i = num_children - 1; i >= 0; --i) {
             goal_stack.emplace_back(conjunction.children[i], goal_instance.cut_barrier);
