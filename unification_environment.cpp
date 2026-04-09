@@ -219,6 +219,10 @@ int unification_environment::add_structure(node &node_instance) {
             index = get_reserved_identifier_index(";");
             break;
         }
+        case CUT: {
+            index = get_reserved_identifier_index("!");
+            break;
+        }
         case TERM: {
             index = add_identifier(node_instance.name);
             break;
@@ -718,12 +722,15 @@ int unification_environment::evaluate_arithmetic_term(int term_index) {
 
 
 void unification_environment::run_interpreter() {
+    int term_index = static_cast<int>(term_vector.size());
     for (;;) {
+        unwind_term_vector(term_index);
+        name_variable_map.clear();
+        variable_name_map.clear();
         std::cout << "?- ";
         std::string s;
         std::getline(std::cin, s);
         if (s.empty()) continue;
-
 
         node n;
 
