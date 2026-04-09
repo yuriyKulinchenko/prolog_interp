@@ -13,9 +13,9 @@ bool is_integral_token(token& token) {
 std::ostream& operator<<(std::ostream& stream, token& token) {
     stream << '{' << token_type_to_string(token.type);
     if (is_identifier_token(token)) {
-        stream << ", '" << token.identifier << "'";
+        stream << ", '" << token.identifier() << "'";
     } else if (is_integral_token(token)) {
-        stream << ", " << token.integer;
+        stream << ", " << token.integer();
     }
     return stream << '}';
 }
@@ -76,163 +76,47 @@ text_position::text_position(
 // token
 
 token::token(token_type type, text_position position)
-    : type(type), integer(0), position(position) {}
+    : type(type), tagged_union(0), position(position) {}
 
 token::token(token_type type, std::string identifier, text_position position)
-    : type(type), identifier(std::move(identifier)), position(position) {}
+    : type(type), tagged_union(std::move(identifier)), position(position) {}
 
 token::token(token_type type, int integer, text_position position)
-    : type(type), integer(integer), position(position) {}
+    : type(type), tagged_union(integer), position(position) {}
 
-token::token(const token& other)
-    : type(other.type), position(other.position) {
-    if (token_has_identifier(type)) {
-        new (&identifier) std::string(other.identifier);
-    } else {
-        integer = other.integer;
-    }
+
+std::string &token::identifier() {
+    return std::get<std::string>(tagged_union);
 }
 
-token::token(token&& other) noexcept
-    : type(other.type), position(other.position) {
-    if (token_has_identifier(type)) {
-        new (&identifier) std::string(std::move(other.identifier));
-    } else {
-        integer = other.integer;
-    }
+int token::integer() {
+    return std::get<int>(tagged_union);
 }
-
-token& token::operator=(const token& other) {
-    if (this == &other) {
-        return *this;
-    }
-
-    this->~token();
-
-    type = other.type;
-    position = other.position;
-
-    if (token_has_identifier(type)) {
-        new (&identifier) std::string(other.identifier);
-    } else {
-        integer = other.integer;
-    }
-
-    return *this;
-}
-
-token& token::operator=(token&& other) noexcept {
-    if (this == &other) {
-        return *this;
-    }
-
-    this->~token();
-
-    type = other.type;
-    position = other.position;
-
-    if (token_has_identifier(type)) {
-        new (&identifier) std::string(std::move(other.identifier));
-    } else {
-        integer = other.integer;
-    }
-
-    return *this;
-}
-
-token::~token() {
-    if (token_has_identifier(type)) {
-        identifier.~basic_string();
-    }
-}
-
 
 // node
 
 node::node()
-    : type(node_type::CUT), integer(0) {}
+    : type(node_type::CUT), tagged_union(0) {}
 
 node::node(node_type type)
-    : type(type), integer(0) {}
+    : type(type), tagged_union(0) {}
 
 node::node(node_type type, std::string name)
-    : type(type), name(std::move(name)) {}
+    : type(type), tagged_union(std::move(name)) {}
 
 node::node(node_type type, int integer)
-    : type(type), integer(integer) {}
+    : type(type), tagged_union(integer) {}
 
 node::node(node_type type, std::vector<node> children)
-    : type(type), integer(0), children(std::move(children)) {}
+    : type(type), tagged_union(0), children(std::move(children)) {}
 
 node::node(node_type type, std::string name, std::vector<node> children)
-    : type(type), name(std::move(name)), children(std::move(children)) {}
+    : type(type), tagged_union(std::move(name)), children(std::move(children)) {}
 
-node::node(const node& other)
-    : type(other.type), children(other.children) {
-    if (node_has_name(type)) {
-        new (&name) std::string(other.name);
-    } else if (node_has_integer(type)) {
-        integer = other.integer;
-    } else {
-        integer = 0;
-    }
+std::string &node::name() {
+    return std::get<std::string>(tagged_union);
 }
 
-node::node(node&& other) noexcept
-    : type(other.type), children(std::move(other.children)) {
-    if (node_has_name(type)) {
-        new (&name) std::string(std::move(other.name));
-    } else if (node_has_integer(type)) {
-        integer = other.integer;
-    } else {
-        integer = 0;
-    }
-}
-
-node& node::operator=(const node& other) {
-    if (this == &other) {
-        return *this;
-    }
-
-    this->~node();
-
-    type = other.type;
-    children = other.children;
-
-    if (node_has_name(type)) {
-        new (&name) std::string(other.name);
-    } else if (node_has_integer(type)) {
-        integer = other.integer;
-    } else {
-        integer = 0;
-    }
-
-    return *this;
-}
-
-node& node::operator=(node&& other) noexcept {
-    if (this == &other) {
-        return *this;
-    }
-
-    this->~node();
-
-    type = other.type;
-    children = std::move(other.children);
-
-    if (node_has_name(type)) {
-        new (&name) std::string(std::move(other.name));
-    } else if (node_has_integer(type)) {
-        integer = other.integer;
-    } else {
-        integer = 0;
-    }
-
-    return *this;
-}
-
-node::~node() {
-    if (node_has_name(type)) {
-        name.~basic_string();
-    }
+int node::integer() {
+    return std::get<int>(tagged_union);
 }

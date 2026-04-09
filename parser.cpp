@@ -34,9 +34,14 @@ std::vector<node> parser::program() {
 
 node parser::clause() {
     node term_instance = term();
-    if (term_instance.type == node_type::VARIABLE) {
-        throw parser_error("Left side of clause cannot be a variable");
+    if (term_instance.type != node_type::TERM) {
+        throw parser_error("Left side of clause must be an atom or compound term");
     }
+
+    if (term_instance.name() == "fail") {
+        throw parser_error("'fail' cannot be used as the head of a clause");
+    }
+
     std::optional<node> goal_instance;
     if (match(token_type::RULE_OPERATOR))
         goal_instance = goalExpr();
@@ -164,16 +169,16 @@ node parser::product() {
 
 node parser::simple_term() {
     if (check(token_type::VARIABLE)) {
-        return {node_type::VARIABLE, advance().identifier};
+        return node{node_type::VARIABLE, advance().identifier()};
     }
 
     if (check(token_type::INTEGER)) {
-        return {node_type::INTEGER_TERM, advance().integer};
+        return {node_type::INTEGER_TERM, advance().integer()};
     }
 
     // Parsing identifier:
     if (check(token_type::SYMBOL)) {
-        std::string identifier_name = advance().identifier;
+        std::string identifier_name = advance().identifier();
         std::optional<std::vector<node>> nodes;
         if (match(token_type::PAREN_OPEN)) {
             token& open_paren = previous();
@@ -291,11 +296,11 @@ std::ostream& lisp_list_log(std::ostream& stream, std::string& identifier, std::
 
 std::ostream& operator<<(std::ostream& stream, node& node) {
     if (node.type == node_type::VARIABLE) {
-        return stream << node.name;
+        return stream << node.name();
     }
 
     if (node.type == node_type::TERM) {
-        stream << node.name;
+        stream << node.name();
         if (node.children.size() > 1) {
             bracketed_elements_log(stream, node.children);
         }

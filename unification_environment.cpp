@@ -63,8 +63,8 @@ int unification_environment::add_node(node& node) {
     switch (node.type) {
         using enum node_type;
         case TERM: return add_structure(node);
-        case INTEGER_TERM: return add_integer(node.integer);
-        case VARIABLE: return add_variable(node.name);
+        case INTEGER_TERM: return add_integer(node.integer());
+        case VARIABLE: return add_variable(node.name());
         default: {
             if (is_goal_node(node.type)) return add_structure(node);
         }
@@ -72,18 +72,27 @@ int unification_environment::add_node(node& node) {
     throw std::logic_error("ERROR: Passed node is not a term, variable or goal");
 }
 
-int unification_environment::add_clause(node &node) {
-    if (node.type != node_type::CLAUSE) {
-        std::string type_string = node_type_to_short_string(node.type);
+int unification_environment::add_clause(node &node_instance) {
+    if (node_instance.type != node_type::CLAUSE) {
+        std::string type_string = node_type_to_string(node_instance.type);
         throw formatted_error("ERROR: Expected clause, received {}", type_string);
     }
 
-    // Clause may or may not have a body:
-    clause_vector.emplace_back(add_node(node.children[0]));
+    // Clause head has constraints:
+
+    node& head_node {node_instance.children[0]};
+
+    if (head_node.type != node_type::TERM) {
+        std::string  type_string = node_type_to_string(node_instance.type);
+        throw formatted_error(
+            "ERROR: Clause head expected to be Term, received {}", type_string);
+    }
+
+    clause_vector.emplace_back(add_node(node_instance.children[0]));
     int clause_index = static_cast<int>(clause_vector.size()) - 1;
-    if (node.children.size() == 2) {
+    if (node_instance.children.size() == 2) {
         // The body is also present:
-        clause_vector[clause_index].body = add_node(node.children[1]);
+        clause_vector[clause_index].body = add_node(node_instance.children[1]);
     }
     // Remove all variable bindings:
     variable_name_map.clear();
@@ -224,7 +233,7 @@ int unification_environment::add_structure(node &node_instance) {
             break;
         }
         case TERM: {
-            index = add_identifier(node_instance.name);
+            index = add_identifier(node_instance.name());
             break;
         }
 

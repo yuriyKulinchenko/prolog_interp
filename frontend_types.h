@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <ostream>
+#include <variant>
 
 #define TOKEN_TYPE_LIST(X) \
 X(SYMBOL)              \
@@ -64,19 +65,11 @@ struct token {
     token(token_type type, std::string identifier, text_position position);
     token(token_type type, int integer, text_position position);
 
-    token(const token& other);
-    token(token&& other) noexcept;
-    token& operator=(const token& other);
-    token& operator=(token&& other) noexcept;
-    ~token();
+    std::string& identifier();
+    int integer();
 
     token_type type;
-
-    union {
-        std::string identifier;
-        int integer;
-    };
-
+    std::variant<int, std::string> tagged_union;
     text_position position;
 };
 
@@ -96,19 +89,11 @@ struct node {
     node(node_type type, std::vector<node> children);
     node(node_type type, std::string name, std::vector<node> children);
 
-    node(const node& other);
-    node(node&& other) noexcept;
-    node& operator=(const node& other);
-    node& operator=(node&& other) noexcept;
-    ~node();
+    std::string& name();
+    int integer();
 
     node_type type;
-
-    union {
-        std::string name;
-        int integer;
-    };
-
+    std::variant<int, std::string> tagged_union;
     std::vector<node> children;
 };
 
