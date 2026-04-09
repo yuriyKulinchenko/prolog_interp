@@ -22,6 +22,15 @@ void solver::log_state(int continuation) {
     std::cout << "\n";
 }
 
+#define BACKTRACK()\
+do {                                        \
+if (history.empty()) {                      \
+    found_all = true;                       \
+    return *this;                           \
+}                                           \
+continuation = restore_decision_point();    \
+} while(false)                              \
+
 
 solver &solver::operator++() {
     int continuation = 0;
@@ -35,11 +44,7 @@ solver &solver::operator++() {
 
     // Edge case handling:
     if (goal_stack.empty()) {
-        if (history.empty()) {
-            found_all = true;
-            return *this;
-        }
-        continuation = restore_decision_point();
+       BACKTRACK();
 #ifdef SOLVER_DEBUG
         first_log = false;
 #endif
@@ -62,13 +67,8 @@ solver &solver::operator++() {
         int goal_index = environment.resolve_bound_variable(peek_goal().term_index);
         if (environment.term_vector[goal_index].is_integer()) {
             // Failure state:
-            if (history.empty()) {
-                found_all = true;
-                return *this;
-            }
-
-            continuation = restore_decision_point();
-
+            BACKTRACK();
+            continue;
         }
         int identifier_index = environment.get_structure(goal_index).identifier_index;
 
@@ -113,6 +113,58 @@ solver &solver::operator++() {
                 continue;
             }
 
+            case unification_environment::get_reserved_identifier_index("="): {
+                std::vector<int>& children = environment.get_structure(goal_index).children;
+                int left = children[0];
+                int right = children[1];
+                bool success = environment.unify(left, right);
+                if (success) {
+                    goal_stack.pop_back();
+                } else {
+                    BACKTRACK();
+                }
+                continue;
+            }
+
+            case unification_environment::get_reserved_identifier_index("is"): {
+                std::vector<int>& children = environment.get_structure(goal_index).children;
+                int left = children[0];
+                int right = environment.evaluate_and_create_arithmetic_term(children[1]);
+                bool success = environment.unify(left, right);
+                if (success) {
+                    goal_stack.pop_back();
+                } else {
+                    BACKTRACK();
+                }
+                continue;
+            }
+
+            case unification_environment::get_reserved_identifier_index("<"): {
+                std::vector<int>& children = environment.get_structure(goal_index).children;
+                int left = environment.evaluate_arithmetic_term(children[0]);
+                int right = environment.evaluate_arithmetic_term(children[1]);
+                bool success = left < right;
+                if (success) {
+                    goal_stack.pop_back();
+                } else {
+                    BACKTRACK();
+                }
+                continue;
+            }
+
+            case unification_environment::get_reserved_identifier_index(">"): {
+                std::vector<int>& children = environment.get_structure(goal_index).children;
+                int left = environment.evaluate_arithmetic_term(children[0]);
+                int right = environment.evaluate_arithmetic_term(children[1]);
+                bool success = left > right;
+                if (success) {
+                    goal_stack.pop_back();
+                } else {
+                    BACKTRACK();
+                }
+                continue;
+            }
+
             case unification_environment::get_reserved_identifier_index("halt"): {
                 throw std::logic_error("EXECUTION HALTED");
             }
@@ -145,13 +197,7 @@ solver &solver::operator++() {
         }
 
         // Otherwise, backtracking is necessary:
-
-        if (history.empty()) {
-            found_all = true;
-            return *this;
-        }
-
-        continuation = restore_decision_point();
+        BACKTRACK();
     }
 
     return *this;

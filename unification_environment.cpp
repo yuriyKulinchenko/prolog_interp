@@ -506,6 +506,8 @@ bool unification_environment::is_infix_term(int term_index) {
         case get_reserved_identifier_index("/"):
         case get_reserved_identifier_index("is"):
         case get_reserved_identifier_index("="):
+        case get_reserved_identifier_index("<"):
+        case get_reserved_identifier_index(">"):
         case get_reserved_identifier_index("\\="):
         case get_reserved_identifier_index("\\+"):
             return true;
@@ -517,6 +519,11 @@ bool unification_environment::is_infix_term(int term_index) {
 }
 
 
+#define COMPOUND_CASE_STATEMENT(s, c)\
+case get_reserved_identifier_index(s): return log_compound_term(stream, structure_index, depth, c)
+
+#define INFIX_CASE_STATEMENT(s)\
+case get_reserved_identifier_index(s): return log_infix_term(stream, structure_index, depth, s)
 
 std::ostream &unification_environment::log_structure(std::ostream &stream, int structure_index, int depth) {
     prolog_structure& structure = get_structure(structure_index);
@@ -525,16 +532,16 @@ std::ostream &unification_environment::log_structure(std::ostream &stream, int s
     switch (identifier_index) {
         case get_reserved_identifier_index("."):
             return log_list(stream, structure_index, depth);
-        case get_reserved_identifier_index(","):
-            return log_compound_term(stream, structure_index, depth, ',');
-        case get_reserved_identifier_index(";"):
-            return log_compound_term(stream, structure_index, depth, ';');
-        case get_reserved_identifier_index("+"):
-            return log_infix_term(stream, structure_index, depth, "+");
-        case get_reserved_identifier_index("is"):
-            return log_infix_term(stream, structure_index, depth, "is");
-        case get_reserved_identifier_index("="):
-            return log_infix_term(stream, structure_index, depth, "=");
+        COMPOUND_CASE_STATEMENT(",", ',');
+        COMPOUND_CASE_STATEMENT(";", ';');
+        INFIX_CASE_STATEMENT("+");
+        INFIX_CASE_STATEMENT("-");
+        INFIX_CASE_STATEMENT("*");
+        INFIX_CASE_STATEMENT("/");
+        INFIX_CASE_STATEMENT("=");
+        INFIX_CASE_STATEMENT("<");
+        INFIX_CASE_STATEMENT(">");
+        INFIX_CASE_STATEMENT("is");
         default:
     }
 
@@ -670,14 +677,45 @@ std::ostream &unification_environment::log_infix_term(std::ostream &stream, int 
     if (is_infix_term(right_index) || is_compound_term(right_index)) {
         log_bracketed_term(stream, right_index, depth - 1);
     } else {
-        log_term(stream, left_index, depth - 1);
+        log_term(stream, right_index, depth - 1);
     }
     return stream;
 }
 
+int unification_environment::evaluate_and_create_arithmetic_term(int term_index) {
+    return add_integer(evaluate_arithmetic_term(term_index));
+}
+
+#define CASE_STATEMENT(op)\
+case get_reserved_identifier_index(#op): {                          \
+    int left = evaluate_arithmetic_term(structure.children[0]);     \
+    int right = evaluate_arithmetic_term(structure.children[1]);    \
+    return left op right;                                           \
+}                                                                   \
+
+int unification_environment::evaluate_arithmetic_term(int term_index) {
+    term_index = resolve_bound_variable(term_index);
+    prolog_term& term = term_vector[term_index];
+    if (term.is_integer()) return term.as.integer;
+    if (term.is_structure()) {
+        prolog_structure& structure = get_structure(term_index);
+        switch (structure.identifier_index) {
+            CASE_STATEMENT(+);
+            CASE_STATEMENT(*);
+            CASE_STATEMENT(-);
+            default: {
+                throw formatted_error("ERROR: '{}' is not a valid arithmetic function",
+                    identifier_vector[structure.identifier_index]);
+            }
+
+        }
+    }
+    throw formatted_error("ERROR: Unable to evaluate variable in arithmetic expression");
+}
+
+#undef CASE_STATEMENT
 
 
-// Search logic:
 
 void unification_environment::run_interpreter() {
     for (;;) {

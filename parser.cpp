@@ -92,18 +92,35 @@ node parser::simpleGoal() {
     return term();
 }
 
-// Term ::= Sum (('=','is') Sum)?
+// Term ::= Sum (('='|'is'|'<'|'>') Sum)?
 
 node parser::term() {
     node left = sum();
-    if (match(token_type::EQUAL) || match(token_type::IS)) {
+    using enum token_type;
+    if (match(EQUAL) || match(IS) || match(LESS_THAN) || match(MORE_THAN)) {
         std::string identifier_string;
-        if (previous().type == token_type::EQUAL) {
-            identifier_string = "=";
-        } else {
-            identifier_string = "is";
+        switch (previous().type) {
+            case EQUAL: {
+                identifier_string = "=";
+                break;
+            }
+            case IS: {
+                identifier_string = "is";
+                break;
+            }
+            case LESS_THAN: {
+                identifier_string = "<";
+                break;
+            }
+            case MORE_THAN: {
+                identifier_string = ">";
+                break;
+            }
+            default: {
+                identifier_string = "";
+            }
         }
-        node right = sum();
+        node right = term();
         return {node_type::TERM, identifier_string, {left, right}};
     }
     return left;

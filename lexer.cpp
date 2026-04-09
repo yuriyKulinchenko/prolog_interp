@@ -98,6 +98,16 @@ std::vector<token> lexer::run() {
                 break;
             }
 
+            case '<': {
+                emit_token(LESS_THAN);
+                break;
+            }
+
+            case '>': {
+                emit_token(MORE_THAN);
+                break;
+            }
+
             case '\\': {
                 switch (advance()) {
                     case '=': emit_token(NOT_EQUAL); break;

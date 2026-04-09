@@ -119,6 +119,9 @@ private:
     [[nodiscard]] bool is_compound_term(int term_index);
     [[nodiscard]] bool is_infix_term(int term_index);
 
+    int evaluate_and_create_arithmetic_term(int term_index);
+    int evaluate_arithmetic_term(int term_index);
+
     std::vector<prolog_term> term_vector;
     std::vector<std::string> identifier_vector;
     std::vector<prolog_clause> clause_vector;
@@ -130,9 +133,10 @@ private:
 
     static constexpr int max_logging_depth = 20;
 
-    static constexpr std::array<std::string_view, 14> reserved_identifiers {
+    static constexpr std::array<std::string_view, 16> reserved_identifiers {
         ",", ";", "!", ".", "[]",
-        "+", "-", "*", "/", "is", "=", "\\=", "\\+",
+        "+", "-", "*", "/", "is",
+        "=", "\\=", "\\+", "<", ">",
         "halt"
     };
 

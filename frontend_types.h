@@ -27,7 +27,9 @@ X(NOT)                 \
 X(EQUAL)               \
 X(NOT_EQUAL)           \
 X(IS)                  \
-X(INTEGER)
+X(INTEGER)             \
+X(LESS_THAN)           \
+X(MORE_THAN)
 
 #define NODE_TYPE_LIST(X) \
 X(CLAUSE)              \

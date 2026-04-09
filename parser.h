@@ -27,7 +27,7 @@ SimpleGoal ::= Term
              | '(' GoalExpr ')'
              | '!'
 
-Term ::= Sum (('=','is') Sum)?
+Term ::= Sum (('='|'is'|'<','>') Sum)?
 
 Sum ::= Product (('+'|'-') Sum)?
 
