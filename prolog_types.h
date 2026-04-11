@@ -59,4 +59,18 @@ struct prolog_clause {
     int body; // Goal: -1 if not present
 };
 
+struct prolog_timestamp {
+    prolog_timestamp(
+        int term_index,
+        int clause_index,
+        int trail_index
+        ):
+    term_index(term_index), clause_index(clause_index),
+    trail_index(trail_index) {}
+
+    int term_index;
+    int clause_index;
+    int trail_index;
+};
+
 #endif // PROLOG_TYPES_H

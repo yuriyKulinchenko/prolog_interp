@@ -208,6 +208,8 @@ solver &solver::operator++() {
     return *this;
 }
 
+#undef BACKTRACK;
+
 bool solver::operator*() {
     return goal_stack.empty();
 }

@@ -55,6 +55,7 @@ public:
     // Returns a pair specifying if the term is a raw term or variable, and the corresponding index
 
     friend class solver;
+    friend class frame_solver;
     unification_environment();
 
     int add_node(node& node);

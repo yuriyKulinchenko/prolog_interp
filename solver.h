@@ -39,20 +39,6 @@ struct goal {
     int cut_barrier;
 };
 
-struct prolog_timestamp {
-    prolog_timestamp(
-        int term_index,
-        int clause_index,
-        int trail_index
-        ):
-    term_index(term_index), clause_index(clause_index),
-    trail_index(trail_index) {}
-
-    int term_index;
-    int clause_index;
-    int trail_index;
-};
-
 struct decision_point {
     decision_point(prolog_timestamp timestamp, std::vector<goal>& goal_stack, int next_choice_number):
     timestamp(timestamp), goal_stack(std::move(goal_stack)), next_choice_number(next_choice_number) {}
