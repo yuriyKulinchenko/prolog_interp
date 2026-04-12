@@ -9,6 +9,8 @@
 #include <print>
 #include <algorithm>
 
+#include "frame_solver.h"
+
 unification_environment::unification_environment() {
     // These remain fixed
     for (auto& identifier: reserved_identifiers) {
@@ -668,7 +670,6 @@ std::ostream &unification_environment::log_compound_term(std::ostream &stream, i
         log_term(stream, term_children[0], depth - 1);
     }
 
-    log_term(stream,term_children[0], depth - 1);
     for (int i = 1; i < term_children.size(); i++) {
         stream << seperator << ' ';
         if (is_compound_term(term_children[i])) {
@@ -760,7 +761,7 @@ void unification_environment::run_interpreter() {
 
         int goal_index = add_node(n);
 
-        solver solver{*this};
+        frame_solver solver{*this};
         solver.solve(goal_index);
         ++solver;
 

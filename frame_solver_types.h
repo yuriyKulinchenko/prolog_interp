@@ -32,16 +32,29 @@ public:
     frame_stack(): size_(0) {}
 
     void push_back(const frame& frame) {
-        stack.push_back(frame);
+        if (size_ == stack.size()) {
+            stack.push_back(frame);
+        } else {
+            stack[size_] = frame;
+        }
+        size_++;
     }
 
     void emplace_back(frame_type type, int index) {
-        stack.emplace_back(type, index);
+        if (size_ == stack.size()) {
+            stack.emplace_back(type, index);
+        } else {
+            stack[size_] = {type, index};
+        }
         size_++;
     }
 
     void emplace_back(frame_type type) {
-        stack.emplace_back(type);
+        if (size_ == stack.size()) {
+            stack.emplace_back(type);
+        } else {
+            stack[size_] = frame{type};
+        }
         size_++;
     }
 

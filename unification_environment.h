@@ -108,7 +108,7 @@ private:
     std::ostream& log_clauses(std::ostream& stream);
 
     std::ostream& log_term(std::ostream& stream, int term_index, int depth = max_logging_depth);
-    std::ostream& log_bracketed_term(std::ostream& stream, int term_index, int depth);
+    std::ostream& log_bracketed_term(std::ostream& stream, int term_index, int depth = max_logging_depth);
     std::ostream& log_structure(std::ostream& stream, int structure_index, int depth);
     std::ostream& log_variable(std::ostream& stream, int variable_index);
 

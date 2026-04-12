@@ -51,6 +51,8 @@ This necessitates a custom data structure that is non-destructive on pop_back.
 
 */
 
+#define FRAME_SOLVER_DEBUG
+
 class frame_solver {
 public:
     explicit frame_solver(unification_environment& environment):
@@ -59,7 +61,7 @@ public:
     frame_solver& operator++();
     bool operator*();
 
-    void log_frame_stack(frame_stack frame_stack_);
+    void log_frame_stack(frame_stack& frame_stack_);
     void log_history();
     [[nodiscard]] bool at_end() const;
 
@@ -69,13 +71,12 @@ private:
     void restore_decision_point();
     prolog_timestamp get_timestamp();
 
+    void log_frame(frame& frame_);
 
     unification_environment& environment;
     std::vector<frame_decision_point> history;
     frame_stack stack;
     bool found_all;
-    bool prior_success;
-
 };
 
 
