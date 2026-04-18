@@ -70,14 +70,14 @@ solver &solver::operator++() {
             BACKTRACK();
             continue;
         }
-        int identifier_index = environment.get_structure(goal_index).identifier_index;
+        int identifier_index = environment.get_struct(goal_index).identifier_index;
 
         // Check for special cases:
 
         switch (identifier_index) {
             case unification_environment::get_reserved_identifier_index(","): {
                 goal_stack.pop_back();
-                prolog_structure& conjunction_structure = environment.get_structure(goal_index);
+                prolog_struct& conjunction_structure = environment.get_struct(goal_index);
                 int num_children = static_cast<int>(conjunction_structure.children.size());
                 for (int i = num_children - 1; i >= 0; i--){
                     goal_stack.emplace_back(conjunction_structure.children[i], peek_goal().cut_barrier);
@@ -87,7 +87,7 @@ solver &solver::operator++() {
 
             case unification_environment::get_reserved_identifier_index(";"): {
                 // Decision points must be placed:
-                std::vector<int>& disjunction_children = environment.get_structure(goal_index).children;
+                std::vector<int>& disjunction_children = environment.get_struct(goal_index).children;
 
                 // decision point can be placed:
                 if (continuation < disjunction_children.size() - 1) {
@@ -114,7 +114,7 @@ solver &solver::operator++() {
             }
 
             case unification_environment::get_reserved_identifier_index("="): {
-                std::vector<int>& children = environment.get_structure(goal_index).children;
+                std::vector<int>& children = environment.get_struct(goal_index).children;
                 int left = children[0];
                 int right = children[1];
                 bool success = environment.unify(left, right);
@@ -127,7 +127,7 @@ solver &solver::operator++() {
             }
 
             case unification_environment::get_reserved_identifier_index("is"): {
-                std::vector<int>& children = environment.get_structure(goal_index).children;
+                std::vector<int>& children = environment.get_struct(goal_index).children;
                 int left = children[0];
                 int right = environment.evaluate_and_create_arithmetic_term(children[1]);
                 bool success = environment.unify(left, right);
@@ -140,7 +140,7 @@ solver &solver::operator++() {
             }
 
             case unification_environment::get_reserved_identifier_index("<"): {
-                std::vector<int>& children = environment.get_structure(goal_index).children;
+                std::vector<int>& children = environment.get_struct(goal_index).children;
                 int left = environment.evaluate_arithmetic_term(children[0]);
                 int right = environment.evaluate_arithmetic_term(children[1]);
                 bool success = left < right;
@@ -153,7 +153,7 @@ solver &solver::operator++() {
             }
 
             case unification_environment::get_reserved_identifier_index(">"): {
-                std::vector<int>& children = environment.get_structure(goal_index).children;
+                std::vector<int>& children = environment.get_struct(goal_index).children;
                 int left = environment.evaluate_arithmetic_term(children[0]);
                 int right = environment.evaluate_arithmetic_term(children[1]);
                 bool success = left > right;
@@ -260,7 +260,7 @@ bool solver::apply_clause(int clause_index, int choice_number, bool add_decision
 
     if (body.is_structure() &&
         body.structure().identifier_index == unification_environment::get_reserved_identifier_index(",")) {
-        prolog_structure& conjunction = body.structure();
+        prolog_struct& conjunction = body.structure();
         int num_children = static_cast<int>(conjunction.children.size());
         for (int i = num_children - 1; i >= 0; --i) {
             goal_stack.emplace_back(conjunction.children[i], goal_instance.cut_barrier);

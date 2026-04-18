@@ -42,14 +42,14 @@ void unification_environment::validate_type(int index) {
 }
 
 
-prolog_structure &unification_environment::get_structure(int index) {
+prolog_struct &unification_environment::get_struct(int index) {
 #ifdef PERFORM_UNIFICATION_TYPE_CHECK
     validate_type<prolog_term_type::STRUCTURE>(index);
 #endif
     return term_vector[index].structure();
 }
 
-prolog_variable &unification_environment::get_variable(int index) {
+prolog_var &unification_environment::get_var(int index) {
 #ifdef PERFORM_UNIFICATION_TYPE_CHECK
     validate_type<prolog_term_type::VARIABLE>(index);
 #endif
@@ -146,7 +146,7 @@ int unification_environment::duplicate_term(int index, std::unordered_map<int, i
 }
 
 int unification_environment::duplicate_structure(int index, std::unordered_map<int, int>& variable_map) {
-    const prolog_structure& original = get_structure(index);
+    const prolog_struct& original = get_struct(index);
 
     int original_identifier_index = original.identifier_index;
     std::vector<int> original_children = original.children;
@@ -166,7 +166,7 @@ int unification_environment::duplicate_structure(int index, std::unordered_map<i
     int duplicated_structure_index = static_cast<int>(term_vector.size());
     term_vector.emplace_back(prolog_term_type::STRUCTURE);
 
-    prolog_structure& duplicated = term_vector[duplicated_structure_index].structure();
+    prolog_struct& duplicated = term_vector[duplicated_structure_index].structure();
     duplicated.identifier_index = original_identifier_index;
     duplicated.children = std::move(duplicated_children);
 
@@ -190,7 +190,7 @@ void unification_environment::add_clauses(std::vector<node>& nodes) {
     }
 
     auto projection = [&](const prolog_clause& clause) {
-        return get_structure(clause.head).identifier_index;
+        return get_struct(clause.head).identifier_index;
     };
 
     // Clauses will be sorted in the clause_vector based on the ordering of the identifier, for O(1) access time
@@ -307,10 +307,10 @@ int unification_environment::resolve_bound_variable(int variable_index) {
         case STRUCTURE:
         case INTEGER: return variable_index;
         case VARIABLE: {
-            prolog_variable& variable = term.variable();
+            prolog_var& variable = term.variable();
 
             // Variable index may be unbound:
-            if (variable.type == prolog_variable_type::UNBOUND) {
+            if (variable.type == prolog_var_type::UNBOUND) {
                 return variable_index;
             }
 
@@ -365,8 +365,8 @@ bool unification_environment::unify_ground(int i, int j) {
     if (i_term.type != j_term.type) return false;
     if (i_term.is_integer() && j_term.is_integer()) return i_term.integer() == j_term.integer();
 
-    prolog_structure& i_structure = get_structure(i);
-    prolog_structure& j_structure = get_structure(j);
+    prolog_struct& i_structure = get_struct(i);
+    prolog_struct& j_structure = get_struct(j);
     if (i_structure.identifier_index != j_structure.identifier_index) {
 #ifdef UNIFICATION_DEBUG
         std::cout << "Identifiers: " << identifier_vector[i_structure.identifier_index]
@@ -394,13 +394,13 @@ bool unification_environment::unify_ground(int i, int j) {
 void unification_environment::unify_unbound_variables(int i, int j) {
     // If the variables are the same, do nothing:
     if (i == j) return;
-    term_vector[i].variable() = {prolog_variable_type::BOUND, j};
+    term_vector[i].variable() = {prolog_var_type::BOUND, j};
     trail.push_back(i);
 }
 
 // unify_unbound_variable_term(i, j) binds i to the term j
 void unification_environment::unify_unbound_variable_ground(int i, int j) {
-    term_vector[i].variable() = {prolog_variable_type::BOUND, j};
+    term_vector[i].variable() = {prolog_var_type::BOUND, j};
     trail.push_back(i);
 }
 
@@ -408,7 +408,7 @@ void unification_environment::unwind_trail(int i) {
     if (trail.empty()) return;
     for (int j = static_cast<int>(trail.size()) - 1; j >= i; j--) {
         int variable_index = trail[j];
-        term_vector[variable_index].variable().type = prolog_variable_type::UNBOUND;
+        term_vector[variable_index].variable().type = prolog_var_type::UNBOUND;
     }
     trail.erase(trail.begin() + i, trail.end());
 }
@@ -508,7 +508,7 @@ std::ostream &unification_environment::log_bracketed_term(std::ostream &stream, 
 
 bool unification_environment::is_compound_term(int term_index) {
     if (!term_vector[term_index].is_structure()) return false;
-    switch (get_structure(term_index).identifier_index) {
+    switch (get_struct(term_index).identifier_index) {
         case get_reserved_identifier_index(","):
         case get_reserved_identifier_index(";"):
             return true;
@@ -520,7 +520,7 @@ bool unification_environment::is_compound_term(int term_index) {
 
 bool unification_environment::is_infix_term(int term_index) {
     if (!term_vector[term_index].is_structure()) return false;
-    switch (get_structure(term_index).identifier_index) {
+    switch (get_struct(term_index).identifier_index) {
         case get_reserved_identifier_index("+"):
         case get_reserved_identifier_index("-"):
         case get_reserved_identifier_index("*"):
@@ -547,7 +547,7 @@ case get_reserved_identifier_index(s): return log_compound_term(stream, structur
 case get_reserved_identifier_index(s): return log_infix_term(stream, structure_index, depth, s)
 
 std::ostream &unification_environment::log_structure(std::ostream &stream, int structure_index, int depth) {
-    prolog_structure& structure = get_structure(structure_index);
+    prolog_struct& structure = get_struct(structure_index);
     int identifier_index = structure.identifier_index;
 
     switch (identifier_index) {
@@ -582,7 +582,7 @@ std::ostream &unification_environment::log_structure(std::ostream &stream, int s
 }
 
 std::ostream &unification_environment::log_list(std::ostream &stream, int list_index, int depth) {
-    prolog_structure& structure = get_structure(list_index);
+    prolog_struct& structure = get_struct(list_index);
     stream << '[';
 
     // Progress through the list:
@@ -593,7 +593,7 @@ std::ostream &unification_environment::log_list(std::ostream &stream, int list_i
         log_term(stream, structure.children[0], depth - 1);
     }
 
-    prolog_structure* current_structure = &structure;
+    prolog_struct* current_structure = &structure;
 
     while (depth > 0) {
         depth--;
@@ -663,7 +663,7 @@ std::ostream &unification_environment::log_clause(std::ostream &stream, int clau
 }
 
 std::ostream &unification_environment::log_compound_term(std::ostream &stream, int term_index, int depth, char seperator) {
-    std::vector<int>& term_children = get_structure(term_index).children;
+    std::vector<int>& term_children = get_struct(term_index).children;
     if (is_compound_term(term_children[0])) {
         log_bracketed_term(stream, term_children[0], depth - 1);
     } else {
@@ -682,7 +682,7 @@ std::ostream &unification_environment::log_compound_term(std::ostream &stream, i
 }
 
 std::ostream &unification_environment::log_infix_term(std::ostream &stream, int term_index, int depth, const std::string &infix_operator) {
-    std::vector<int>& term_children = get_structure(term_index).children;
+    std::vector<int>& term_children = get_struct(term_index).children;
     int left_index = term_children[0];
     int right_index = term_children[1];
 
@@ -718,7 +718,7 @@ int unification_environment::evaluate_arithmetic_term(int term_index) {
     prolog_term& term = term_vector[term_index];
     if (term.is_integer()) return term.integer();
     if (term.is_structure()) {
-        prolog_structure& structure = get_structure(term_index);
+        prolog_struct& structure = get_struct(term_index);
         switch (structure.identifier_index) {
             CASE_STATEMENT(+);
             CASE_STATEMENT(*);

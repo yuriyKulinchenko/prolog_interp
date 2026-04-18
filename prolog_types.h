@@ -4,21 +4,21 @@
 #include <vector>
 #include <variant>
 
-enum class prolog_variable_type {
+enum class prolog_var_type {
     BOUND, UNBOUND
 };
 
-struct prolog_variable {
-    prolog_variable();
-    prolog_variable(prolog_variable_type type, int index);
+struct prolog_var {
+    prolog_var();
+    prolog_var(prolog_var_type type, int index);
 
-    prolog_variable_type type;
+    prolog_var_type type;
     int index;
 };
 
-struct prolog_structure {
-    prolog_structure();
-    explicit prolog_structure(int index);
+struct prolog_struct {
+    prolog_struct();
+    explicit prolog_struct(int index);
 
     int identifier_index;
     std::vector<int> children;
@@ -34,8 +34,8 @@ struct prolog_term {
     explicit prolog_term(prolog_term_type type);
     explicit prolog_term(int integer);
 
-    prolog_structure& structure();
-    prolog_variable& variable();
+    prolog_struct& structure();
+    prolog_var& variable();
     int integer();
 
     [[nodiscard]] bool is_variable() const;
@@ -45,7 +45,7 @@ struct prolog_term {
     [[nodiscard]] bool is_ground() const;
 
     prolog_term_type type;
-    std::variant<int, prolog_structure, prolog_variable> tagged_union;
+    std::variant<int, prolog_struct, prolog_var> tagged_union;
 };
 
 struct prolog_clause {
