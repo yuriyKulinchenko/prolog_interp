@@ -296,7 +296,7 @@ void solver::apply_timestamp(prolog_timestamp timestamp) {
 
 void solver::log_goal(goal goal_instance) {
     // std::cout << '{';
-    environment.log_term(std::cout, goal_instance.term_index);
+    environment.log_term(goal_instance.term_index);
     // << ", " << goal_instance.cut_barrier << '}';
 }
 

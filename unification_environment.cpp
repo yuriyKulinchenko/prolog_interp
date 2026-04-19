@@ -444,7 +444,7 @@ void unification_environment::test_unification() {
     bool success = unify(i1, i2);
 
     std::cout << (success ? "Unification succeeded" : "Unification failed") << '\n';
-    if (success) log_variables(std::cout);
+    if (success) log_variables();
 
     variable_name_map.clear();
     name_variable_map.clear();
@@ -460,7 +460,7 @@ void unification_environment::test_clauses(const std::string& path) {
     std::vector<node> clauses = parser.program();
     add_clauses(clauses);
 
-    log_clauses(std::cout);
+    log_clauses();
 
     std::cout << "Identifier vector: " << identifier_vector << '\n';
 }
@@ -481,28 +481,33 @@ void unification_environment::test_duplication(const std::string &path) {
         duplicate_clause(i);
     }
 
-    log_clauses(std::cout);
+    log_clauses();
 }
 
 
 
-std::ostream &unification_environment::log_term(std::ostream& stream, int i, int depth) {
-    if (depth == 0) return stream << "...";
+void unification_environment::log_term(int i, int depth) {
+    if (depth == 0) {
+        std::cout << "...";
+        return;
+    }
+
     i = resolve_bound_variable(i);
 
     switch (term_vector[i].type) {
         using enum prolog_term_type;
-        case VARIABLE: return log_variable(stream, i);
-        case STRUCTURE: return log_structure(stream, i, depth);
-        case INTEGER: return stream << get_integer(i);
+        case VARIABLE: log_variable(i); return;
+        case STRUCTURE: log_structure(i, depth); return;
+        case INTEGER: {
+            std::cout << get_integer(i);
+        }
     }
-
-    return stream;
 }
 
-std::ostream &unification_environment::log_bracketed_term(std::ostream &stream, int term_index, int depth) {
-    stream << '(';
-    return log_term(stream, term_index, depth) << ')';
+void unification_environment::log_bracketed_term(int term_index, int depth) {
+    std::cout << '(';
+    log_term(term_index, depth);
+    std::cout << ')';
 }
 
 
@@ -541,18 +546,18 @@ bool unification_environment::is_infix_term(int term_index) {
 
 
 #define COMPOUND_CASE_STATEMENT(s, c)\
-case get_reserved_identifier_index(s): return log_compound_term(stream, structure_index, depth, c)
+case get_reserved_identifier_index(s): log_compound_term(structure_index, depth, c); return
 
 #define INFIX_CASE_STATEMENT(s)\
-case get_reserved_identifier_index(s): return log_infix_term(stream, structure_index, depth, s)
+case get_reserved_identifier_index(s): log_infix_term(structure_index, depth, s); return
 
-std::ostream &unification_environment::log_structure(std::ostream &stream, int structure_index, int depth) {
+void unification_environment::log_structure(int structure_index, int depth) {
     prolog_struct& structure = get_struct(structure_index);
     int identifier_index = structure.identifier_index;
 
     switch (identifier_index) {
         case get_reserved_identifier_index("."):
-            return log_list(stream, structure_index, depth);
+            return log_list(structure_index, depth);
         COMPOUND_CASE_STATEMENT(",", ',');
         COMPOUND_CASE_STATEMENT(";", ';');
         INFIX_CASE_STATEMENT("+");
@@ -566,31 +571,29 @@ std::ostream &unification_environment::log_structure(std::ostream &stream, int s
         default:
     }
 
-    stream << identifier_vector[identifier_index];
+    std::cout << identifier_vector[identifier_index];
 
     if (!structure.children.empty()) {
-        stream << '(';
-        log_term(stream, structure.children[0], depth - 1);
+        std::cout << '(';
+        log_term(structure.children[0], depth - 1);
         for (int j = 1; j < structure.children.size(); j++) {
-            stream << ", ";
-            log_term(stream, structure.children[j], depth - 1);
+            std::cout << ", ";
+            log_term(structure.children[j], depth - 1);
         }
-        stream << ')';
+        std::cout << ')';
     }
-
-    return stream;
 }
 
-std::ostream &unification_environment::log_list(std::ostream &stream, int list_index, int depth) {
+void unification_environment::log_list(int list_index, int depth) {
     prolog_struct& structure = get_struct(list_index);
-    stream << '[';
+    std::cout << '[';
 
     // Progress through the list:
 
     if (is_compound_term(structure.children[0])) {
-        log_bracketed_term(stream, structure.children[0], depth - 1);
+        log_bracketed_term(structure.children[0], depth - 1);
     } else {
-        log_term(stream, structure.children[0], depth - 1);
+        log_term(structure.children[0], depth - 1);
     }
 
     prolog_struct* current_structure = &structure;
@@ -606,100 +609,102 @@ std::ostream &unification_environment::log_list(std::ostream &stream, int list_i
             std::string& id = identifier_vector[current_structure->identifier_index];
 
             if (id == "[]") {
-                return stream << ']';
+                std::cout << ']';
+                return;
             }
 
             if (id == ".") {
-                stream << ", ";
+                std::cout << ", ";
                 if (is_compound_term(current_structure->children[0])) {
-                    log_bracketed_term(stream, current_structure->children[0], depth);
+                    log_bracketed_term(current_structure->children[0], depth);
                 } else {
-                    log_term(stream, current_structure->children[0], depth);
+                    log_term(current_structure->children[0], depth);
                 }
                 continue;
             }
         }
 
-        // Non-cons structure OR variable → treat as tail
-        stream << "| ";
-        log_term(stream, next_index, depth);
-        return stream << ']';
+        // Non-cons structure OR variable -> treat as tail
+        std::cout << "| ";
+        log_term(next_index, depth);
+        std::cout << ']';
+        return;
     }
 
-    return stream << ']';
+    std::cout << ']';
 }
 
 
-std::ostream &unification_environment::log_variable(std::ostream &stream, int variable_index) {
-    if (variable_name_map.contains(variable_index)) return stream << variable_name_map[variable_index];
-    return stream << "V" << variable_index;
+void unification_environment::log_variable(int variable_index) {
+    if (variable_name_map.contains(variable_index)) {
+        std::cout << variable_name_map[variable_index];
+    } else {
+        std::cout << "V" << variable_index;
+    }
 }
 
-std::ostream& unification_environment::log_variables(std::ostream &stream) {
+void unification_environment::log_variables() {
     for (auto& [name, index]: name_variable_map) {
-        stream << name << " = ";
-        log_term(stream, index);
-        stream << '\n';
+        std::cout << name << " = ";
+        log_term(index);
+        std::cout << '\n';
     }
-    return stream;
 }
 
-std::ostream &unification_environment::log_clauses(std::ostream &stream) {
+void unification_environment::log_clauses() {
     for (int i = 0; i < clause_vector.size(); i++) {
-        log_clause(stream, i, max_logging_depth) << '\n';
+        log_clause(i, max_logging_depth);
+        std::cout << '\n';
     }
-    return stream;
 }
 
 
-std::ostream &unification_environment::log_clause(std::ostream &stream, int clause_index, int depth) {
+void unification_environment::log_clause(int clause_index, int depth) {
     prolog_clause& clause = clause_vector[clause_index];
-    log_term(stream, clause.head, depth);
+    log_term(clause.head, depth);
     if (clause.body != -1) {
-        stream << " :- ";
-        log_term(stream, clause.body, depth);
+        std::cout << " :- ";
+        log_term(clause.body, depth);
     }
-    return stream << '.';
+    std::cout << '.';
 }
 
-std::ostream &unification_environment::log_compound_term(std::ostream &stream, int term_index, int depth, char seperator) {
+void unification_environment::log_compound_term(int term_index, int depth, char seperator) {
     std::vector<int>& term_children = get_struct(term_index).children;
     if (is_compound_term(term_children[0])) {
-        log_bracketed_term(stream, term_children[0], depth - 1);
+        log_bracketed_term(term_children[0], depth - 1);
     } else {
-        log_term(stream, term_children[0], depth - 1);
+        log_term(term_children[0], depth - 1);
     }
 
     for (int i = 1; i < term_children.size(); i++) {
-        stream << seperator << ' ';
+        std::cout << seperator << ' ';
         if (is_compound_term(term_children[i])) {
-            log_bracketed_term(stream, term_children[i], depth - 1);
+            log_bracketed_term(term_children[i], depth - 1);
         } else {
-            log_term(stream, term_children[i], depth - 1);
+            log_term(term_children[i], depth - 1);
         }
     }
-    return stream;
 }
 
-std::ostream &unification_environment::log_infix_term(std::ostream &stream, int term_index, int depth, const std::string &infix_operator) {
+void unification_environment::log_infix_term(int term_index, int depth, const std::string &infix_operator) {
     std::vector<int>& term_children = get_struct(term_index).children;
     int left_index = term_children[0];
     int right_index = term_children[1];
 
     if (is_infix_term(left_index) || is_compound_term(left_index)) {
-        log_bracketed_term(stream, left_index, depth - 1);
+        log_bracketed_term(left_index, depth - 1);
     } else {
-        log_term(stream, left_index, depth - 1);
+        log_term(left_index, depth - 1);
     }
 
-    stream << ' ' << infix_operator << ' ';
+    std::cout << ' ' << infix_operator << ' ';
 
     if (is_infix_term(right_index) || is_compound_term(right_index)) {
-        log_bracketed_term(stream, right_index, depth - 1);
+        log_bracketed_term(right_index, depth - 1);
     } else {
-        log_term(stream, right_index, depth - 1);
+        log_term(right_index, depth - 1);
     }
-    return stream;
 }
 
 int unification_environment::evaluate_and_create_arithmetic_term(int term_index) {
@@ -767,7 +772,7 @@ void unification_environment::run_interpreter() {
 
         while (!solver.at_end()) {
             std::println("{}true{}", GREEN, RESET);
-            log_variables(std::cout);
+            log_variables();
             std::string command;
             std::getline(std::cin, command);
             ++solver;

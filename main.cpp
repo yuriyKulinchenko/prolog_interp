@@ -6,7 +6,7 @@
 
 int main() {
     unification_environment environment {};
-    lexer lexer(read_file("../examples/source.txt"));
+    lexer lexer(read_file("../examples/housesProblem.txt"));
     parser parser(lexer.run(), lexer);
     std::vector<node> clauses = parser.program();
 

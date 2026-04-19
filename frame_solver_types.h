@@ -25,6 +25,7 @@ struct frame {
     frame_type type;
     int index;
     int parent;
+    int decision_index = 0;
 
     continuation_state continuation;
     continuation_state parent_continuation;

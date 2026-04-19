@@ -4,7 +4,7 @@
 #include "frame_solver_types.h"
 #include "unification_environment.h"
 
-#define FRAME_SOLVER_DEBUG
+// #define FRAME_SOLVER_DEBUG
 
 class frame_solver {
 public:
@@ -18,7 +18,7 @@ public:
         int parent, continuation_state parent_continuation);
     void unwind();
 
-    void log_frame_stack(std::vector<frame>& frame_stack_);
+    void log_frame_stack();
     void log_history();
     [[nodiscard]] bool at_end() const;
 
@@ -36,7 +36,6 @@ private:
     std::vector<frame> stack;
     bool found_all;
 
-    int decision_index = 0;
     int stack_index = 0;
     bool solved = false;
 };
