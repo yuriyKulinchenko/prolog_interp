@@ -30,26 +30,26 @@ Main execution loop:
 
 */
 
-struct goal {
-    goal(int term_index, int cut_barrier):
-    term_index(term_index), cut_barrier(cut_barrier) {}
-    goal(): term_index(-1), cut_barrier(-1) {}
-
-    int term_index;
-    int cut_barrier;
-};
-
-struct decision_point {
-    decision_point(prolog_timestamp timestamp, std::vector<goal>& goal_stack, int next_choice_number):
-    timestamp(timestamp), goal_stack(std::move(goal_stack)), next_choice_number(next_choice_number) {}
-
-    prolog_timestamp timestamp;
-    std::vector<goal> goal_stack;
-    int next_choice_number;
-};
-
 class solver {
 public:
+    struct goal {
+        goal(int term_index, int cut_barrier):
+        term_index(term_index), cut_barrier(cut_barrier) {}
+        goal(): term_index(-1), cut_barrier(-1) {}
+
+        int term_index;
+        int cut_barrier;
+    };
+
+    struct decision_point {
+        decision_point(prolog_timestamp timestamp, std::vector<goal>& goal_stack, int next_choice_number):
+        timestamp(timestamp), goal_stack(std::move(goal_stack)), next_choice_number(next_choice_number) {}
+
+        prolog_timestamp timestamp;
+        std::vector<goal> goal_stack;
+        int next_choice_number;
+    };
+
     explicit solver(unification_environment& environment):
     environment(environment), found_all(false) {}
     void solve(int goal_index);
@@ -59,7 +59,6 @@ public:
     void log_goal_stack(std::vector<goal> goal_stack_instance);
     void log_history();
     [[nodiscard]] bool at_end() const;
-
 private:
 
 

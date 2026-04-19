@@ -218,18 +218,18 @@ bool solver::at_end() const {
     return found_all;
 }
 
-goal solver::pop_goal() {
+solver::goal solver::pop_goal() {
     goal return_index = goal_stack[goal_stack.size() - 1];
     goal_stack.pop_back();
     return return_index;
 }
 
-goal solver::peek_goal() {
+solver::goal solver::peek_goal() {
     return goal_stack[goal_stack.size() - 1];
 }
 
 
-decision_point solver::pop_history() {
+solver::decision_point solver::pop_history() {
     decision_point return_point = history[history.size() - 1];
     history.pop_back();
     return return_point;

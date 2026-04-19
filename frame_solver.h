@@ -8,6 +8,11 @@
 
 class frame_solver {
 public:
+    using application_result = frame_solver_types::application_result;
+    using continuation_state = frame_solver_types::continuation_state;
+    using frame = frame_solver_types::frame;
+    using decision_point = frame_solver_types::decision_point;
+
     explicit frame_solver(unification_environment& environment):
     env(environment), found_all(false) {}
     void solve(int goal_index);
@@ -32,7 +37,7 @@ private:
     void log_frame(frame& frame_);
 
     unification_environment& env;
-    std::vector<frame_decision_point> history;
+    std::vector<decision_point> history;
     std::vector<frame> stack;
     bool found_all;
 

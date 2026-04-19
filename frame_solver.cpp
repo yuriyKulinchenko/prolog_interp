@@ -65,6 +65,8 @@ More details to follow...
 
 #define CASE(s) case unification_environment::get_reserved_identifier_index(s)
 
+using namespace frame_solver_types;
+
 bool is_fact(application_result result) {
     return result == application_result::FACT;
 }
@@ -101,10 +103,12 @@ do {                    \
     puts("\n");         \
 } while (false)         \
 
+#define ASSERT(X) assert(X)
+
 #else
 #define PRINT_TRACE()
+#define ASSERT(X)
 #endif
-
 
 
 
@@ -117,11 +121,11 @@ frame_solver &frame_solver::operator++() {
 
     while (stack_index != -1) {
         PRINT_TRACE();
-        assert(stack_index >= 0 && stack_index < static_cast<int>(stack.size()));
+        ASSERT(stack_index >= 0 && stack_index < static_cast<int>(stack.size()));
         frame& current_frame = stack[stack_index];
-        assert(current_frame.parent >= -1 && current_frame.parent < static_cast<int>(stack.size()));
-        assert(current_frame.index >= 0 && current_frame.index < static_cast<int>(env.term_vector.size()));
-        assert(env.term_vector[current_frame.index].type == prolog_term_type::STRUCTURE);
+        ASSERT(current_frame.parent >= -1 && current_frame.parent < static_cast<int>(stack.size()));
+        ASSERT(current_frame.index >= 0 && current_frame.index < static_cast<int>(env.term_vector.size()));
+        ASSERT(env.term_vector[current_frame.index].type == prolog_term_type::STRUCTURE);
 
         switch (current_frame.type) {
             using enum frame_type;
@@ -183,13 +187,30 @@ frame_solver &frame_solver::operator++() {
                 break;
             }
 
+            case DISJUNCTION: {
+                // This mirrors RULE closely:
+
+                std::vector<int>& children = env.get_struct(current_frame.index).children;
+                current_frame.continuation.remains = false;
+                int decision_index = current_frame.decision_index;
+
+                if (decision_index + 1 < children.size()) {
+                    history.emplace_back(get_timestamp(), stack_index, stack.size(), decision_index + 1);
+                }
+
+                add_frame(children[decision_index], stack_index, current_frame.continuation);
+                stack_index = top_index();
+                break;
+            }
+
+
             case CONJUNCTION: {
                 if (current_frame.continuation.remains) {
                     int next = current_frame.continuation.next;
                     prolog_struct& structure = env.get_struct(current_frame.index);
 
-                    assert(current_frame.continuation.next >= 0);
-                    assert(current_frame.continuation.next < static_cast<int>(structure.children.size()));
+                    ASSERT(current_frame.continuation.next >= 0);
+                    ASSERT(current_frame.continuation.next < static_cast<int>(structure.children.size()));
 
                     const std::vector<int>& children = structure.children;
                     current_frame.continuation.next++;
@@ -204,10 +225,6 @@ frame_solver &frame_solver::operator++() {
                 } else {
                     unwind();
                 }
-                break;
-            }
-
-            case DISJUNCTION: {
                 break;
             }
 
@@ -227,13 +244,13 @@ void frame_solver::unwind() {
 
 bool frame_solver::restore_decision_point() {
     if (history.empty()) return false;
-    frame_decision_point decision_point = history.back();
+    decision_point decision_point = history.back();
     history.pop_back();
 
-    assert(decision_point.stack_size >= 0);
-    assert(decision_point.stack_size <= static_cast<int>(stack.size()));
-    assert(decision_point.stack_index >= 0);
-    assert(decision_point.stack_index < decision_point.stack_size);
+    ASSERT(decision_point.stack_size >= 0);
+    ASSERT(decision_point.stack_size <= static_cast<int>(stack.size()));
+    ASSERT(decision_point.stack_index >= 0);
+    ASSERT(decision_point.stack_index < decision_point.stack_size);
 
     apply_timestamp(decision_point.timestamp);
     stack_index = decision_point.stack_index;
@@ -272,7 +289,7 @@ application_result frame_solver::apply_clause(int clause_index, int head_index, 
 }
 
 void frame_solver::add_frame(int index, int parent, continuation_state parent_continuation) {
-    assert(index >= 0 && index < static_cast<int>(env.term_vector.size()));
+    ASSERT(index >= 0 && index < static_cast<int>(env.term_vector.size()));
     using enum frame_type;
     prolog_term& term = env.term_vector[index];
     switch (term.type) {
@@ -343,6 +360,12 @@ void frame_solver::log_frame(frame &frame_) {
             break;
         }
 
+        case DISJUNCTION: {
+            env.log_bracketed_term(frame_.index);
+            std::cout << ", " << (frame_.continuation.remains ? "continues" : "stops");
+            break;
+        }
+
         default: {
             std::cout << "UNSUPPORTED";
         }
@@ -366,7 +389,7 @@ void frame_solver::log_history() {
     std::cout << "HISTORY: ";
     if (history.empty()) std::cout << "EMPTY";
     else {
-        for (frame_decision_point& dp: history) {
+        for (decision_point& dp: history) {
             std::cout << "[stack_index: " << dp.stack_index << ", decision_index: " << dp.decision_index << ']';
         }
     }

@@ -2,11 +2,12 @@
 #include "helper.h"
 #include  "lexer.h"
 #include "parser.h"
+#include "solver.h"
 #include "unification_environment.h"
 
 int main() {
     unification_environment environment {};
-    lexer lexer(read_file("../examples/housesProblem.txt"));
+    lexer lexer(read_file("../examples/source.txt"));
     parser parser(lexer.run(), lexer);
     std::vector<node> clauses = parser.program();
 
