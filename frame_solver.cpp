@@ -65,6 +65,19 @@ More details to follow...
 
 #define CASE(s) case unification_environment::get_reserved_identifier_index(s)
 
+#define COMPARISON_CASE(op, cond)\
+CASE(op): {                                                                 \
+current_frame.continuation.remains = false;                                 \
+int left_val = env.evaluate_arithmetic_term(structure.children[0]);         \
+int right_val = env.evaluate_arithmetic_term(structure.children[1]);        \
+if (cond) {                                                                 \
+unwind();                                                                   \
+} else {                                                                    \
+BACKTRACK();                                                                \
+}                                                                           \
+continue;                                                                   \
+}                                                                           \
+
 using namespace frame_solver_types;
 
 bool is_fact(application_result result) {
@@ -132,9 +145,51 @@ frame_solver &frame_solver::operator++() {
 
             case RULE: {
                 prolog_struct& structure = env.get_struct(current_frame.index);
+                current_frame.continuation.remains = false;
 
                 switch (structure.identifier_index) {
                     CASE("halt"): throw std::logic_error("EXECUTION HALTED");
+
+                    CASE("is"): {
+                        int left = structure.children[0];
+                        if (env.term_vector[left].is_structure()) {
+                            throw std::logic_error("ERROR: Left hand side of is/2 must be variable or integer");
+                        }
+
+                        int right = env.evaluate_and_create_arithmetic_term(structure.children[1]);
+                        env.unify(left, right);
+                        unwind();
+                        continue;
+                    }
+
+                    CASE("="): {
+                        int left = structure.children[0];
+                        int right = structure.children[1];
+
+                        if (env.unify(left, right)) {
+                            unwind();
+                        } else {
+                            BACKTRACK();
+                        }
+                        continue;
+                    }
+
+                    CASE("\\="): {
+                        prolog_timestamp timestamp = get_timestamp();
+                        int left = structure.children[0];
+                        int right = structure.children[1];
+
+                        if (env.unify(left, right)) {
+                            apply_timestamp(timestamp);
+                            BACKTRACK();
+                        } else {
+                            unwind();
+                        }
+                        continue;
+                    }
+
+                    COMPARISON_CASE("<", left_val < right_val);
+                    COMPARISON_CASE(">", left_val > right_val);
                     default:
                 }
 
@@ -143,7 +198,6 @@ frame_solver &frame_solver::operator++() {
                 int stack_size = static_cast<int>(stack.size());
 
                 // No continuation remains for a rule application:
-                current_frame.continuation.remains = false;
                 continuation_state continuation = current_frame.continuation;
 
                 // Check if the rule is actually valid:
@@ -406,4 +460,5 @@ bool frame_solver::at_end() const {
 }
 
 #undef CASE
+#undef COMPARISON_CASE
 #undef BACKTRACK
