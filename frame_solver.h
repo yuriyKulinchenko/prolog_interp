@@ -20,20 +20,16 @@ public:
     bool operator*() const;
 
     application_result apply_clause(int clause_index, int head_index,
-        int parent, continuation_state parent_continuation);
+        int parent, int cut_point, continuation_state parent_continuation);
     void unwind();
-
     void log_frame_stack();
     void log_history();
     [[nodiscard]] bool at_end() const;
 
 private:
-    void add_frame(int index, int parent, continuation_state parent_continuation);
+    void add_frame(int index, int parent = -1, int cut_point = -1, continuation_state parent_continuation = {});
     bool restore_decision_point();
-    prolog_timestamp get_timestamp();
-    void apply_timestamp(prolog_timestamp timestamp);
     int top_index();
-
     void log_frame(frame& frame_);
 
     unification_environment& env;

@@ -123,6 +123,9 @@ private:
     int evaluate_and_create_arithmetic_term(int term_index);
     int evaluate_arithmetic_term(int term_index);
 
+    prolog_timestamp get_timestamp();
+    void apply_timestamp(prolog_timestamp timestamp);
+
     std::vector<prolog_term> term_vector;
     std::vector<std::string> identifier_vector;
     std::vector<prolog_clause> clause_vector;

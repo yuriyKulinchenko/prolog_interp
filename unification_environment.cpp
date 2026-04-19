@@ -785,3 +785,18 @@ void unification_environment::run_interpreter() {
         std::println("{}false{}", RED, RESET);
     }
 }
+
+prolog_timestamp unification_environment::get_timestamp() {
+    return {
+        static_cast<int>(term_vector.size()),
+        static_cast<int>(clause_vector.size()),
+        static_cast<int>(trail.size())
+    };
+}
+
+void unification_environment::apply_timestamp(prolog_timestamp timestamp) {
+    unwind_trail(timestamp.trail_index);
+    unwind_clause_vector(timestamp.clause_index);
+    unwind_term_vector(timestamp.term_index);
+}
+

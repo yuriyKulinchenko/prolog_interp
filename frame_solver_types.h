@@ -20,13 +20,17 @@ namespace frame_solver_types {
     };
 
     struct frame {
-        frame(frame_type type, int index, int parent, continuation_state parent_continuation):
-        type(type), index(index), parent(parent), parent_continuation(parent_continuation) {}
+        frame(): type(frame_type::HALT), index(-1), parent(-1), cut_point(-1) {}
+
+        frame(frame_type type, int index, int parent, int cut_point, continuation_state parent_continuation):
+        type(type), index(index), parent(parent),
+        parent_continuation(parent_continuation), cut_point(cut_point) {}
 
         frame_type type;
         int index;
         int parent;
         int decision_index = 0;
+        int cut_point;
 
         continuation_state continuation;
         continuation_state parent_continuation;
@@ -45,5 +49,11 @@ namespace frame_solver_types {
         RULE, FACT, FAILURE
     };
 }
+
+struct frame_logger_configuration {
+    static constexpr bool log_continuation = true;
+    static constexpr bool log_parent = true;
+    static constexpr bool log_cut_point = true;
+};
 
 #endif //FRAME_SOLVER_TYPES_H
