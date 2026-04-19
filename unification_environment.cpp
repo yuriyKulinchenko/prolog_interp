@@ -196,8 +196,12 @@ void unification_environment::add_clauses(std::vector<node>& nodes) {
     // Clauses will be sorted in the clause_vector based on the ordering of the identifier, for O(1) access time
     std::ranges::sort(clause_vector, std::less{}, projection);
 
+    // Create flat table instead of hash-map:
+    identifier_clause_map.assign(identifier_vector.size(), {0, 0});
+
     int current_id = -1;
     int start_index = 0;
+
 
     for (int n = 0; n < clause_vector.size(); n++) {
         int id = projection(clause_vector[n]);

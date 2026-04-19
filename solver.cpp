@@ -177,9 +177,9 @@ solver &solver::operator++() {
             default:
         }
 
-        std::pair clause_range = {0, 0};
+        std::pair clause_range = environment.identifier_clause_map[identifier_index];
 
-        if (environment.identifier_clause_map.contains(identifier_index)) {
+        if (clause_range.second != 0) {
             clause_range = environment.identifier_clause_map[identifier_index];
         }
 
@@ -208,7 +208,7 @@ solver &solver::operator++() {
     return *this;
 }
 
-#undef BACKTRACK;
+#undef BACKTRACK
 
 bool solver::operator*() {
     return goal_stack.empty();

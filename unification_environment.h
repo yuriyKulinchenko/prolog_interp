@@ -126,7 +126,7 @@ private:
     std::vector<prolog_term> term_vector;
     std::vector<std::string> identifier_vector;
     std::vector<prolog_clause> clause_vector;
-    std::unordered_map<int, std::pair<int, int>> identifier_clause_map; // Maps identifier index to start of clause
+    std::vector<std::pair<int, int>> identifier_clause_map; // Maps identifier index to start of clause
 
     std::unordered_map<std::string, int> name_variable_map;
     std::unordered_map<int, std::string> variable_name_map;

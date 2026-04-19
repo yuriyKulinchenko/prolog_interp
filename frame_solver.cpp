@@ -143,10 +143,10 @@ frame_solver &frame_solver::operator++() {
                 continuation_state continuation = current_frame.continuation;
 
                 // Check if the rule is actually valid:
-                if (env.identifier_clause_map.contains(structure.identifier_index)) {
-                    auto [lower_bound, upper_bound] =
-                        env.identifier_clause_map[structure.identifier_index];
+                auto [lower_bound, upper_bound] =
+                         env.identifier_clause_map[structure.identifier_index];
 
+                if (upper_bound != 0) {
                     int decision_range = upper_bound - lower_bound;
 
                     application_result result = application_result::FAILURE;
