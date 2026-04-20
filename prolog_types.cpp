@@ -65,6 +65,11 @@ bool prolog_term::is_unbound_variable() {
         variable().type == prolog_var_type::UNBOUND;
 }
 
+bool prolog_term::is_bound_variable() {
+    return is_variable() &&
+        variable().type == prolog_var_type::BOUND;
+}
+
 bool prolog_term::is_structure() const {
     return type == prolog_term_type::STRUCTURE;
 }

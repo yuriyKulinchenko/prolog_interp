@@ -41,6 +41,9 @@ void unification_environment::validate_type(term_index index) {
     }
 }
 
+prolog_term &unification_environment::get_term(term_index index) {
+    return term_vector[index.raw()];
+}
 
 prolog_struct &unification_environment::get_struct(term_index index) {
 #ifdef PERFORM_UNIFICATION_TYPE_CHECK
@@ -149,7 +152,7 @@ term_index unification_environment::duplicate_structure(term_index index, std::u
     const prolog_struct& original = get_struct(index);
 
     identifier_index original_identifier_index = original.index;
-    std::vector<term_index> original_children = original.children;
+    const std::vector<term_index>& original_children = original.children;
 
     if (original_children.empty()) {
         // Atomic structure, index can be re-used:
@@ -303,25 +306,12 @@ identifier_index unification_environment::add_identifier(const std::string &name
 }
 
 term_index unification_environment::resolve_bound_variable(term_index variable_index) {
-    prolog_term& term = term_vector[variable_index.raw()];
 
-    switch (term.type) {
-        using enum prolog_term_type;
-        case STRUCTURE:
-        case INTEGER: return variable_index;
-        case VARIABLE: {
-            prolog_var& variable = term.variable();
-
-            // Variable index may be unbound:
-            if (variable.type == prolog_var_type::UNBOUND) {
-                return variable_index;
-            }
-
-            // If variable is bound, follow it:
-            return resolve_bound_variable(variable.index);
-        }
+    while (get_term(variable_index).is_bound_variable()) {
+        variable_index = get_var(variable_index).index;
     }
-    throw formatted_error("Unrecognized type: {}", prolog_term_type_to_string(term.type));
+
+    return variable_index;
 }
 
 

@@ -76,6 +76,7 @@ public:
 private:
     template<prolog_term_type type>
     void validate_type(term_index index);
+    prolog_term& get_term(term_index index);
     prolog_struct& get_struct(term_index index);
     prolog_var& get_var(term_index index);
     prolog_clause& get_clause(clause_index index);

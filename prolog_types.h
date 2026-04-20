@@ -51,6 +51,7 @@ struct prolog_term {
 
     [[nodiscard]] bool is_variable() const;
     [[nodiscard]] bool is_unbound_variable();
+    [[nodiscard]] bool is_bound_variable();
     [[nodiscard]] bool is_structure() const;
     [[nodiscard]] bool is_integer() const;
     [[nodiscard]] bool is_ground() const;
