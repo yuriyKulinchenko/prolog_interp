@@ -63,7 +63,7 @@ More details to follow...
 #include <cassert>
 #include <iostream>
 
-#define CASE(s) case unification_environment::get_reserved_identifier_index(s)
+#define CASE(s) case unification_environment::get_reserved_identifier_index(s).raw()
 
 #define COMPARISON_CASE(op, cond)\
 CASE(op): {                                                                 \
@@ -92,8 +92,8 @@ bool is_success(application_result result) {
     return is_fact(result) || is_rule(result);
 }
 
-void frame_solver::solve(int goal_index) {
-    stack_index = 0;
+void frame_solver::solve(term_index goal_index) {
+    stack_index = frame_index{0};
     found_all = false;
     stack.clear();
     history.clear();
@@ -127,18 +127,18 @@ do {                    \
 
 frame_solver &frame_solver::operator++() {
 
-    if (stack_index == -1) {
+    if (stack_index == frame_index::invalid()) {
         BACKTRACK();
         PRINT_TRACE();
     }
 
-    while (stack_index != -1) {
+    while (stack_index != frame_index::invalid()) {
         PRINT_TRACE();
-        ASSERT(stack_index >= 0 && stack_index < static_cast<int>(stack.size()));
-        frame& current_frame = stack[stack_index];
-        ASSERT(current_frame.parent >= -1 && current_frame.parent < static_cast<int>(stack.size()));
-        ASSERT(current_frame.index >= 0 && current_frame.index < static_cast<int>(env.term_vector.size()));
-        ASSERT(env.term_vector[current_frame.index].type == prolog_term_type::STRUCTURE);
+        ASSERT(stack_index.raw() < stack.size());
+        frame& current_frame = stack[stack_index.raw()];
+        ASSERT(current_frame.parent == frame_index::invalid() || current_frame.parent.raw() < stack.size());
+        ASSERT(current_frame.index.raw() < env.term_vector.size());
+        ASSERT(env.term_vector[current_frame.index.raw()].type == prolog_term_type::STRUCTURE);
 
         switch (current_frame.type) {
             using enum frame_type;
@@ -147,24 +147,24 @@ frame_solver &frame_solver::operator++() {
                 prolog_struct& structure = env.get_struct(current_frame.index);
                 current_frame.continuation.remains = false;
 
-                switch (structure.identifier_index) {
+                switch (structure.index.raw()) {
                     CASE("halt"): throw std::logic_error("EXECUTION HALTED");
 
                     CASE("is"): {
-                        int left = structure.children[0];
-                        if (env.term_vector[left].is_structure()) {
+                        term_index left = structure.children[0];
+                        if (env.term_vector[left.raw()].is_structure()) {
                             throw std::logic_error("ERROR: Left hand side of is/2 must be variable or integer");
                         }
 
-                        int right = env.evaluate_and_create_arithmetic_term(structure.children[1]);
+                        term_index right = env.evaluate_and_create_arithmetic_term(structure.children[1]);
                         env.unify(left, right);
                         unwind();
                         continue;
                     }
 
                     CASE("="): {
-                        int left = structure.children[0];
-                        int right = structure.children[1];
+                        term_index left = structure.children[0];
+                        term_index right = structure.children[1];
 
                         if (env.unify(left, right)) {
                             unwind();
@@ -176,8 +176,8 @@ frame_solver &frame_solver::operator++() {
 
                     CASE("\\="): {
                         prolog_timestamp timestamp = env.get_timestamp();
-                        int left = structure.children[0];
-                        int right = structure.children[1];
+                        term_index left = structure.children[0];
+                        term_index right = structure.children[1];
 
                         if (env.unify(left, right)) {
                             env.apply_timestamp(timestamp);
@@ -195,28 +195,28 @@ frame_solver &frame_solver::operator++() {
 
                 // Get the current state, in case a decision point needs to be recovered:
                 prolog_timestamp timestamp = env.get_timestamp();
-                int stack_size = static_cast<int>(stack.size());
+                size_t stack_size = stack.size();
 
                 continuation_state continuation = current_frame.continuation;
-                int cut_point = current_frame.cut_point;
+                frame_history_index cut_point = current_frame.cut_point;
 
                 // Check if the rule is actually valid:
                 auto [lower_bound, upper_bound] =
-                         env.identifier_clause_map[structure.identifier_index];
+                         env.identifier_clause_map[structure.index.raw()];
 
-                if (upper_bound != 0) {
-                    int decision_range = upper_bound - lower_bound;
+                if (upper_bound != clause_index{0}) {
+                    size_t decision_range = upper_bound.raw() - lower_bound.raw();
 
                     application_result result = application_result::FAILURE;
-                    int head_index = current_frame.index;
-                    int decision_index = current_frame.decision_index;
+                    term_index head_index = current_frame.index;
+                    size_t decision_index = current_frame.decision_index;
 
-                    for (int i = decision_index; i < decision_range; i++) {
-                        int clause_index = lower_bound + i;
-                        int parent = stack_index;
+                    for (size_t i = decision_index; i < decision_range; i++) {
+                        clause_index clause_idx = lower_bound + i;
+                        frame_index parent = stack_index;
 
                         // Attempt clause application:
-                        result = apply_clause(clause_index, head_index, parent, cut_point, continuation);
+                        result = apply_clause(clause_idx, head_index, parent, cut_point, continuation);
                         if (is_success(result)) {
                             if (i + 1 < decision_range) {
                                 // If possible, place a decision point:
@@ -244,9 +244,9 @@ frame_solver &frame_solver::operator++() {
             case DISJUNCTION: {
                 // This mirrors RULE closely:
 
-                std::vector<int>& children = env.get_struct(current_frame.index).children;
+                std::vector<term_index>& children = env.get_struct(current_frame.index).children;
                 current_frame.continuation.remains = false;
-                int decision_index = current_frame.decision_index;
+                size_t decision_index = current_frame.decision_index;
 
                 if (decision_index + 1 < children.size()) {
                     history.emplace_back(env.get_timestamp(), stack_index, stack.size(), decision_index + 1);
@@ -267,7 +267,7 @@ frame_solver &frame_solver::operator++() {
                     ASSERT(current_frame.continuation.next >= 0);
                     ASSERT(current_frame.continuation.next < static_cast<int>(structure.children.size()));
 
-                    const std::vector<int>& children = structure.children;
+                    const std::vector<term_index>& children = structure.children;
                     current_frame.continuation.next++;
 
                     if (next + 1 == children.size()) {
@@ -285,7 +285,7 @@ frame_solver &frame_solver::operator++() {
 
             case CUT: {
                 current_frame.continuation.remains = false;
-                history.erase(history.begin() + current_frame.cut_point, history.end());
+                history.erase(history.begin() + static_cast<std::ptrdiff_t>(current_frame.cut_point.raw()), history.end());
                 unwind();
                 break;
             }
@@ -299,8 +299,8 @@ frame_solver &frame_solver::operator++() {
 }
 
 void frame_solver::unwind() {
-    while (stack_index != -1 && !stack[stack_index].continuation.remains) {
-        stack_index = stack[stack_index].parent;
+    while (stack_index != frame_index::invalid() && !stack[stack_index.raw()].continuation.remains) {
+        stack_index = stack[stack_index.raw()].parent;
     }
 }
 
@@ -309,37 +309,35 @@ bool frame_solver::restore_decision_point() {
     decision_point decision_point = history.back();
     history.pop_back();
 
-    ASSERT(decision_point.stack_size >= 0);
-    ASSERT(decision_point.stack_size <= static_cast<int>(stack.size()));
-    ASSERT(decision_point.stack_index >= 0);
-    ASSERT(decision_point.stack_index < decision_point.stack_size);
+    ASSERT(decision_point.stack_size <= stack.size());
+    ASSERT(decision_point.stack_index.raw() < decision_point.stack_size);
 
     env.apply_timestamp(decision_point.timestamp);
     stack_index = decision_point.stack_index;
-    stack.erase(stack.begin() + decision_point.stack_size, stack.end());
-    stack[stack_index].decision_index = decision_point.decision_index;
+    stack.erase(stack.begin() + static_cast<std::ptrdiff_t>(decision_point.stack_size), stack.end());
+    stack[stack_index.raw()].decision_index = decision_point.decision_index;
 
-    stack[stack_index].continuation.remains = true;
+    stack[stack_index.raw()].continuation.remains = true;
 
-    for (int i = stack_index; stack[i].parent != -1; i = stack[i].parent) {
-        int p = stack[i].parent;
-        stack[p].continuation = stack[i].parent_continuation;
+    for (frame_index i = stack_index; stack[i.raw()].parent != frame_index::invalid(); i = stack[i.raw()].parent) {
+        frame_index p = stack[i.raw()].parent;
+        stack[p.raw()].continuation = stack[i.raw()].parent_continuation;
     }
 
     return true;
 }
 
-application_result frame_solver::apply_clause(int clause_index, int head_index, int parent,
-    int cut_point, continuation_state parent_continuation) {
+application_result frame_solver::apply_clause(clause_index clause_idx, term_index head_index, frame_index parent,
+    frame_history_index cut_point, continuation_state parent_continuation) {
 
     prolog_timestamp timestamp = env.get_timestamp();
-    int duplicate_index = env.duplicate_clause(clause_index);
+    clause_index duplicate_index = env.duplicate_clause(clause_idx);
     prolog_clause& duplicate_clause = env.get_clause(duplicate_index);
 
     // Now, attempt unification:
     if (env.unify(head_index, duplicate_clause.head)) {
 
-        if (duplicate_clause.body != -1) {
+        if (duplicate_clause.body != term_index::invalid()) {
             add_frame(duplicate_clause.body, parent, cut_point, parent_continuation);
             return application_result::RULE;
         }
@@ -350,15 +348,15 @@ application_result frame_solver::apply_clause(int clause_index, int head_index, 
     return application_result::FAILURE;
 }
 
-void frame_solver::add_frame(int index, int parent, int cut_point,  continuation_state parent_continuation) {
-    ASSERT(index >= 0 && index < static_cast<int>(env.term_vector.size()));
+void frame_solver::add_frame(term_index index, frame_index parent, frame_history_index cut_point, continuation_state parent_continuation) {
+    ASSERT(index.raw() < env.term_vector.size());
     using enum frame_type;
-    prolog_term& term = env.term_vector[index];
+    prolog_term& term = env.term_vector[index.raw()];
     switch (term.type) {
         using enum prolog_term_type;
         case STRUCTURE: {
             prolog_struct& structure = env.get_struct(index);
-            switch (structure.identifier_index) {
+            switch (structure.index.raw()) {
                 CASE(","): {
                     stack.emplace_back(CONJUNCTION, index, parent,
                         cut_point, parent_continuation);
@@ -379,7 +377,7 @@ void frame_solver::add_frame(int index, int parent, int cut_point,  continuation
 
                 default: {
                     stack.emplace_back(RULE, index, parent,
-                        history.size(), parent_continuation);
+                        frame_history_index{history.size()}, parent_continuation);
                     return;
                 }
             }
@@ -391,8 +389,8 @@ void frame_solver::add_frame(int index, int parent, int cut_point,  continuation
     }
 }
 
-int frame_solver::top_index() {
-    return static_cast<int>(stack.size()) - 1;
+frame_index frame_solver::top_index() {
+    return frame_index{stack.size() - 1};
 }
 
 void frame_solver::log_frame(frame &frame_) {
@@ -425,13 +423,13 @@ void frame_solver::log_frame(frame &frame_) {
     // Parent:
 
     if constexpr (frame_logger_configuration::log_parent) {
-        std::cout << ", parent: " << frame_.parent;
+        std::cout << ", parent: " << frame_.parent.raw();
     }
 
     // Cut point:
 
     if constexpr (frame_logger_configuration::log_cut_point) {
-        std::cout << ", cut_point: " << frame_.cut_point;
+        std::cout << ", cut_point: " << frame_.cut_point.raw();
     }
 
     print_green("]");
@@ -453,7 +451,7 @@ void frame_solver::log_history() {
     if (history.empty()) std::cout << "EMPTY";
     else {
         for (decision_point& dp: history) {
-            std::cout << "[stack_index: " << dp.stack_index << ", decision_index: " << dp.decision_index << ']';
+            std::cout << "[stack_index: " << dp.stack_index.raw() << ", decision_index: " << dp.decision_index << ']';
         }
     }
     std::cout << '\n';
@@ -461,7 +459,7 @@ void frame_solver::log_history() {
 
 
 bool frame_solver::operator*() const {
-    return stack_index == -1;
+    return stack_index == frame_index::invalid();
 }
 
 bool frame_solver::at_end() const {

@@ -7,6 +7,45 @@
 #include <format>
 #include <iostream>
 
+#include <cstddef>
+#include <functional>
+#include <limits>
+
+template<typename Tag>
+struct strong_index {
+    explicit constexpr strong_index(size_t v) noexcept : value(v) {}
+    strong_index() = default;
+
+    template<typename OtherTag>
+    strong_index(strong_index<OtherTag>) = delete;
+
+    [[nodiscard]] constexpr size_t raw() const noexcept { return value; }
+
+    constexpr bool operator==(strong_index other) const noexcept { return value == other.value; }
+    constexpr bool operator!=(strong_index other) const noexcept { return value != other.value; }
+    constexpr bool operator< (strong_index other) const noexcept { return value <  other.value; }
+    constexpr bool operator<=(strong_index other) const noexcept { return value <= other.value; }
+    constexpr bool operator> (strong_index other) const noexcept { return value >  other.value; }
+    constexpr bool operator>=(strong_index other) const noexcept { return value >= other.value; }
+
+    constexpr strong_index operator+(size_t n) const noexcept { return strong_index(value + n); }
+    constexpr strong_index operator-(size_t n) const noexcept { return strong_index(value - n); }
+    constexpr strong_index& operator++() noexcept { ++value; return *this; }
+    constexpr strong_index  operator++(int) noexcept { auto tmp = *this; ++value; return tmp; }
+    constexpr strong_index& operator--() noexcept { --value; return *this; }
+    constexpr strong_index  operator--(int) noexcept { auto tmp = *this; --value; return tmp; }
+
+    static consteval strong_index invalid() noexcept { return strong_index{std::numeric_limits<size_t>::max()}; }
+    size_t value{};
+};
+
+template<typename Tag>
+struct std::hash<strong_index<Tag>> {
+    size_t operator()(strong_index<Tag> idx) const noexcept {
+        return std::hash<size_t>{}(idx.value);
+    }
+};
+
 #define RED     "\033[31m"
 #define GREEN   "\033[32m"
 #define RESET   "\033[0m"

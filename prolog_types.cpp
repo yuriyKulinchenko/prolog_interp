@@ -4,19 +4,19 @@
 // prolog_variable
 
 prolog_var::prolog_var()
-    : type(prolog_var_type::UNBOUND), index(0) {}
+    : type(prolog_var_type::UNBOUND), index(term_index{0}) {}
 
-prolog_var::prolog_var(prolog_var_type type, int index)
+prolog_var::prolog_var(prolog_var_type type, term_index index)
     : type(type), index(index) {}
 
 
 // prolog_structure
 
 prolog_struct::prolog_struct()
-    : identifier_index(-1) {}
+    : index(identifier_index::invalid()) {}
 
-prolog_struct::prolog_struct(int index)
-    : identifier_index(index) {}
+prolog_struct::prolog_struct(identifier_index index)
+    : index(index) {}
 
 // prolog_term
 

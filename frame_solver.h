@@ -15,21 +15,21 @@ public:
 
     explicit frame_solver(unification_environment& environment):
     env(environment), found_all(false) {}
-    void solve(int goal_index);
+    void solve(term_index goal_index);
     frame_solver& operator++();
     bool operator*() const;
 
-    application_result apply_clause(int clause_index, int head_index,
-        int parent, int cut_point, continuation_state parent_continuation);
+    application_result apply_clause(clause_index clause_idx, term_index head_index,
+        frame_index parent, frame_history_index cut_point, continuation_state parent_continuation);
     void unwind();
     void log_frame_stack();
     void log_history();
     [[nodiscard]] bool at_end() const;
 
 private:
-    void add_frame(int index, int parent = -1, int cut_point = -1, continuation_state parent_continuation = {});
+    void add_frame(term_index index, frame_index parent = frame_index::invalid(), frame_history_index cut_point = frame_history_index::invalid(), continuation_state parent_continuation = {});
     bool restore_decision_point();
-    int top_index();
+    frame_index top_index();
     void log_frame(frame& frame_);
 
     unification_environment& env;
@@ -37,7 +37,7 @@ private:
     std::vector<frame> stack;
     bool found_all;
 
-    int stack_index = 0;
+    frame_index stack_index{0};
     bool solved = false;
 };
 

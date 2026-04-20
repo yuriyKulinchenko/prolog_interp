@@ -3,6 +3,17 @@
 
 #include <vector>
 #include <variant>
+#include "helper.h"
+
+struct term_index_base {};
+struct clause_index_base {};
+struct identifier_index_base {};
+struct trail_index_base {};
+
+using term_index = strong_index<term_index_base>;
+using clause_index = strong_index<clause_index_base>;
+using identifier_index = strong_index<identifier_index_base>;
+using trail_index = strong_index<trail_index_base>;
 
 enum class prolog_var_type {
     BOUND, UNBOUND
@@ -10,18 +21,18 @@ enum class prolog_var_type {
 
 struct prolog_var {
     prolog_var();
-    prolog_var(prolog_var_type type, int index);
+    prolog_var(prolog_var_type type, term_index index);
 
     prolog_var_type type;
-    int index;
+    term_index index;
 };
 
 struct prolog_struct {
     prolog_struct();
-    explicit prolog_struct(int index);
+    explicit prolog_struct(identifier_index index);
 
-    int identifier_index;
-    std::vector<int> children;
+    identifier_index index;
+    std::vector<term_index> children;
 };
 
 enum class prolog_term_type {
@@ -49,28 +60,28 @@ struct prolog_term {
 };
 
 struct prolog_clause {
-    prolog_clause(int head, int body):
+    prolog_clause(term_index head, term_index body):
         head(head), body(body) {}
 
-    explicit prolog_clause(int head):
-        head(head), body(-1) {}
+    explicit prolog_clause(term_index head):
+        head(head), body(term_index::invalid()) {}
 
-    int head; // Term
-    int body; // Goal: -1 if not present
+    term_index head; // Term
+    term_index body; // Goal: -1 if not present
 };
 
 struct prolog_timestamp {
     prolog_timestamp(
-        int term_index,
-        int clause_index,
-        int trail_index
+        term_index term_index_,
+        clause_index clause_index_,
+        trail_index trail_index_
         ):
-    term_index(term_index), clause_index(clause_index),
-    trail_index(trail_index) {}
+    term_index_(term_index_), clause_index_(clause_index_),
+    trail_index_(trail_index_) {}
 
-    int term_index;
-    int clause_index;
-    int trail_index;
+    term_index term_index_;
+    clause_index clause_index_;
+    trail_index trail_index_;
 };
 
 #endif // PROLOG_TYPES_H

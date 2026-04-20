@@ -23,9 +23,6 @@ What does an environment look like?
 - Terms can be added to the arena
 
 Another facility: conversion from AST to term
-*/
-
-
 /*
 
 Current problem: Store and instantiate goals
@@ -58,8 +55,8 @@ public:
     friend class frame_solver;
     unification_environment();
 
-    int add_node(node& node);
-    int add_clause(node& node);
+    term_index add_node(node& node);
+    clause_index add_clause(node& node);
     void add_clauses(std::vector<node>& nodes);
 
     void test_unification();
@@ -67,61 +64,61 @@ public:
     void test_duplication(const std::string& path);
     void run_interpreter();
 
-    static consteval int get_reserved_identifier_index(std::string_view s) {
-        for (int i = 0; i < reserved_identifiers.size(); i++) {
+    static consteval identifier_index get_reserved_identifier_index(std::string_view s) {
+        for (size_t i = 0; i < reserved_identifiers.size(); i++) {
             if (reserved_identifiers[i] == s) {
-                return i;
+                return identifier_index{i};
             }
         }
-        return -1;
+        return identifier_index::invalid();
     }
 
 private:
     template<prolog_term_type type>
-    void validate_type(int index);
-    prolog_struct& get_struct(int index);
-    prolog_var& get_var(int index);
-    prolog_clause& get_clause(int index);
-    int get_integer(int index);
+    void validate_type(term_index index);
+    prolog_struct& get_struct(term_index index);
+    prolog_var& get_var(term_index index);
+    prolog_clause& get_clause(clause_index index);
+    int get_integer(term_index index);
 
-    int add_structure(node& node_instance);
-    int add_integer(int integer);
-    int add_variable(std::string& variable_name);
-    int add_identifier(const std::string& name);
+    term_index add_structure(node& node_instance);
+    term_index add_integer(int integer);
+    term_index add_variable(std::string& variable_name);
+    identifier_index add_identifier(const std::string& name);
 
-    int duplicate_clause(int clause_index);
-    int duplicate_term(int index, std::unordered_map<int, int>& variable_map);
-    int duplicate_structure(int index, std::unordered_map<int, int>& variable_map);
-    int duplicate_variable(int index, std::unordered_map<int, int>& variable_map);
+    clause_index duplicate_clause(clause_index index);
+    term_index duplicate_term(term_index index, std::unordered_map<term_index, term_index>& variable_map);
+    term_index duplicate_structure(term_index index, std::unordered_map<term_index, term_index>& variable_map);
+    term_index duplicate_variable(term_index index, std::unordered_map<term_index, term_index>& variable_map);
 
-    bool unify(int i, int j);
-    bool unify_ground(int i, int j);
-    void unify_unbound_variables(int i,int j);
-    void unify_unbound_variable_ground(int i, int j);
-    int resolve_bound_variable(int variable_index);
+    bool unify(term_index i, term_index j);
+    bool unify_ground(term_index i, term_index j);
+    void unify_unbound_variables(term_index i, term_index j);
+    void unify_unbound_variable_ground(term_index i, term_index j);
+    term_index resolve_bound_variable(term_index variable_index);
 
-    void unwind_term_vector(int i);
-    void unwind_clause_vector(int i);
-    void unwind_trail(int i);
+    void unwind_term_vector(term_index i);
+    void unwind_clause_vector(clause_index i);
+    void unwind_trail(trail_index i);
 
     void log_variables();
     void log_clauses();
 
-    void log_term(int term_index, int depth = max_logging_depth);
-    void log_bracketed_term(int term_index, int depth = max_logging_depth);
-    void log_structure(int structure_index, int depth);
-    void log_variable(int variable_index);
+    void log_term(term_index i, int depth = max_logging_depth);
+    void log_bracketed_term(term_index i, int depth = max_logging_depth);
+    void log_structure(term_index structure_index, int depth);
+    void log_variable(term_index variable_index);
 
-    void log_list(int list_index, int depth);
-    void log_clause(int clause_index, int depth = max_logging_depth);
-    void log_compound_term(int term_index, int depth, char seperator);
-    void log_infix_term(int term_index, int depth, const std::string& infix_operator);
+    void log_list(term_index list_index, int depth);
+    void log_clause(clause_index idx, int depth = max_logging_depth);
+    void log_compound_term(term_index i, int depth, char seperator);
+    void log_infix_term(term_index i, int depth, const std::string& infix_operator);
 
-    [[nodiscard]] bool is_compound_term(int term_index);
-    [[nodiscard]] bool is_infix_term(int term_index);
+    [[nodiscard]] bool is_compound_term(term_index i);
+    [[nodiscard]] bool is_infix_term(term_index i);
 
-    int evaluate_and_create_arithmetic_term(int term_index);
-    int evaluate_arithmetic_term(int term_index);
+    term_index evaluate_and_create_arithmetic_term(term_index i);
+    int evaluate_arithmetic_term(term_index i);
 
     prolog_timestamp get_timestamp();
     void apply_timestamp(prolog_timestamp timestamp);
@@ -129,11 +126,11 @@ private:
     std::vector<prolog_term> term_vector;
     std::vector<std::string> identifier_vector;
     std::vector<prolog_clause> clause_vector;
-    std::vector<std::pair<int, int>> identifier_clause_map; // Maps identifier index to start of clause
+    std::vector<std::pair<clause_index, clause_index>> identifier_clause_map; // Maps identifier index to start of clause
 
-    std::unordered_map<std::string, int> name_variable_map;
-    std::unordered_map<int, std::string> variable_name_map;
-    std::unordered_map<std::string, int> identifier_map;
+    std::unordered_map<std::string, term_index> name_variable_map;
+    std::unordered_map<term_index, std::string> variable_name_map;
+    std::unordered_map<std::string, identifier_index> identifier_map;
 
     static constexpr int max_logging_depth = 20;
 
@@ -145,7 +142,7 @@ private:
     };
 
     // For the operation of the interpreter:
-    std::vector<int> trail;
+    std::vector<term_index> trail;
 };
 
 
