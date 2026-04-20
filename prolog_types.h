@@ -27,12 +27,37 @@ struct prolog_var {
     term_index index;
 };
 
+
 struct prolog_struct {
     prolog_struct();
-    explicit prolog_struct(identifier_index index);
+    explicit prolog_struct(size_t num_children);
+    prolog_struct(size_t num_children, identifier_index index);
+
+    prolog_struct(prolog_struct&& other) noexcept;
+    prolog_struct& operator=(prolog_struct&& other) noexcept;
+    prolog_struct(const prolog_struct& other);
+    prolog_struct& operator=(const prolog_struct& other);
+
+    ~prolog_struct();
+
+    term_index& operator[](size_t i);
+    const term_index& operator[](size_t i) const;
+
+    term_index& at(size_t i);
+    [[nodiscard]] const term_index& at(size_t i) const;
+
+    term_index left();
+    term_index right();
 
     identifier_index index;
-    std::vector<term_index> children;
+    size_t num_children;
+    static constexpr size_t inline_capacity = 2;
+
+private:
+    union {
+        term_index* children{};
+        term_index inline_children[inline_capacity];
+    };
 };
 
 enum class prolog_term_type {

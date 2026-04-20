@@ -68,8 +68,8 @@ More details to follow...
 #define COMPARISON_CASE(op, cond)\
 CASE(op): {                                                                 \
 current_frame.continuation.remains = false;                                 \
-int left_val = env.evaluate_arithmetic_term(structure.children[0]);         \
-int right_val = env.evaluate_arithmetic_term(structure.children[1]);        \
+int left_val = env.evaluate_arithmetic_term(structure.left());              \
+int right_val = env.evaluate_arithmetic_term(structure.right());            \
 if (cond) {                                                                 \
 unwind();                                                                   \
 } else {                                                                    \
@@ -151,20 +151,20 @@ frame_solver &frame_solver::operator++() {
                     CASE("halt"): throw std::logic_error("EXECUTION HALTED");
 
                     CASE("is"): {
-                        term_index left = structure.children[0];
+                        term_index left = structure.left();
                         if (env.term_vector[left.raw()].is_structure()) {
                             throw std::logic_error("ERROR: Left hand side of is/2 must be variable or integer");
                         }
 
-                        term_index right = env.evaluate_and_create_arithmetic_term(structure.children[1]);
+                        term_index right = env.evaluate_and_create_arithmetic_term(structure.right());
                         env.unify(left, right);
                         unwind();
                         continue;
                     }
 
                     CASE("="): {
-                        term_index left = structure.children[0];
-                        term_index right = structure.children[1];
+                        term_index left = structure.left();
+                        term_index right = structure.right();
 
                         if (env.unify(left, right)) {
                             unwind();
@@ -176,8 +176,8 @@ frame_solver &frame_solver::operator++() {
 
                     CASE("\\="): {
                         prolog_timestamp timestamp = env.get_timestamp();
-                        term_index left = structure.children[0];
-                        term_index right = structure.children[1];
+                        term_index left = structure.left();
+                        term_index right = structure.right();
 
                         if (env.unify(left, right)) {
                             env.apply_timestamp(timestamp);
@@ -244,15 +244,15 @@ frame_solver &frame_solver::operator++() {
             case DISJUNCTION: {
                 // This mirrors RULE closely:
 
-                std::vector<term_index>& children = env.get_struct(current_frame.index).children;
+                prolog_struct& structure = env.get_struct(current_frame.index);
                 current_frame.continuation.remains = false;
                 size_t decision_index = current_frame.decision_index;
 
-                if (decision_index + 1 < children.size()) {
+                if (decision_index + 1 < structure.num_children) {
                     history.emplace_back(env.get_timestamp(), stack_index, stack.size(), decision_index + 1);
                 }
 
-                add_frame(children[decision_index], stack_index,
+                add_frame(structure[decision_index], stack_index,
                     current_frame.cut_point, current_frame.continuation);
                 stack_index = top_index();
                 break;
@@ -265,16 +265,15 @@ frame_solver &frame_solver::operator++() {
                     prolog_struct& structure = env.get_struct(current_frame.index);
 
                     ASSERT(current_frame.continuation.next >= 0);
-                    ASSERT(current_frame.continuation.next < static_cast<int>(structure.children.size()));
+                    ASSERT(current_frame.continuation.next < static_cast<int>(structure.num_children));
 
-                    const std::vector<term_index>& children = structure.children;
                     current_frame.continuation.next++;
 
-                    if (next + 1 == children.size()) {
+                    if (next + 1 == static_cast<int>(structure.num_children)) {
                         current_frame.continuation.remains = false;
                     }
 
-                    add_frame(children[next], stack_index, current_frame.cut_point, current_frame.continuation);
+                    add_frame(structure[next], stack_index, current_frame.cut_point, current_frame.continuation);
 
                     stack_index = top_index();
                 } else {

@@ -149,31 +149,20 @@ term_index unification_environment::duplicate_term(term_index index, std::unorde
 }
 
 term_index unification_environment::duplicate_structure(term_index index, std::unordered_map<term_index, term_index>& variable_map) {
-    const prolog_struct& original = get_struct(index);
+    size_t n = get_struct(index).num_children;
+    if (n == 0) return index;
 
-    identifier_index original_identifier_index = original.index;
-    const std::vector<term_index>& original_children = original.children;
+    identifier_index orig_id = get_struct(index).index;
+    prolog_struct dup(n, orig_id);
 
-    if (original_children.empty()) {
-        // Atomic structure, index can be re-used:
-        return index;
+    for (size_t i = 0; i < n; i++) {
+        dup[i] = duplicate_term(get_struct(index)[i], variable_map);
     }
 
-    std::vector<term_index> duplicated_children;
-    duplicated_children.reserve(original_children.size());
-
-    for (term_index child : original_children) {
-        duplicated_children.push_back(duplicate_term(child, variable_map));
-    }
-
-    term_index duplicated_structure_index{term_vector.size()};
+    term_index duplicate_index{term_vector.size()};
     term_vector.emplace_back(prolog_term_type::STRUCTURE);
-
-    prolog_struct& duplicated = term_vector[duplicated_structure_index.raw()].structure();
-    duplicated.index = original_identifier_index;
-    duplicated.children = std::move(duplicated_children);
-
-    return duplicated_structure_index;
+    term_vector[duplicate_index.raw()].structure() = std::move(dup);
+    return duplicate_index;
 }
 
 term_index unification_environment::duplicate_variable(term_index index, std::unordered_map<term_index, term_index>& variable_map) {
@@ -257,15 +246,15 @@ term_index unification_environment::add_structure(node &node_instance) {
         }
     }
 
-    term_index structure_index{term_vector.size()};
-    term_vector.emplace_back(prolog_term_type::STRUCTURE);
-    term_vector[structure_index.raw()].structure().index = id;
-
-    for (node& child: node_instance.children) {
-        term_index child_index = add_node(child);
-        term_vector[structure_index.raw()].structure().children.push_back(child_index);
+    size_t n = node_instance.children.size();
+    prolog_struct s(n, id);
+    for (size_t i = 0; i < n; i++) {
+        s[i] = add_node(node_instance.children[i]);
     }
 
+    term_index structure_index{term_vector.size()};
+    term_vector.emplace_back(prolog_term_type::STRUCTURE);
+    term_vector[structure_index.raw()].structure() = std::move(s);
     return structure_index;
 }
 
@@ -368,16 +357,16 @@ bool unification_environment::unify_ground(term_index i, term_index j) {
         return false;
     }
 
-    if (i_structure.children.size() != j_structure.children.size()) {
+    if (i_structure.num_children != j_structure.num_children) {
 #ifdef UNIFICATION_DEBUG
-        std::cout << "Arity of " << i_structure.children.size()
-        << " and " << j_structure.children.size() << " do not match.\n";
+        std::cout << "Arity of " << i_structure.num_children
+        << " and " << j_structure.num_children << " do not match.\n";
 #endif
         return false;
     }
 
-    for (int n = 0; n < i_structure.children.size(); n++) {
-        if (!unify(i_structure.children[n], j_structure.children[n])) return false;
+    for (size_t n = 0; n < i_structure.num_children; n++) {
+        if (!unify(i_structure[n], j_structure[n])) return false;
     }
 
     return true;
@@ -399,10 +388,12 @@ void unification_environment::unify_unbound_variable_ground(term_index i, term_i
 
 void unification_environment::unwind_trail(trail_index i) {
     if (trail.empty()) return;
-    for (int j = static_cast<int>(trail.size()) - 1; j >= static_cast<int>(i.raw()); j--) {
+
+    for (size_t j = trail.size(); j-- > i.raw();) {
         term_index variable_index = trail[j];
         term_vector[variable_index.raw()].variable().type = prolog_var_type::UNBOUND;
     }
+
     trail.erase(trail.begin() + static_cast<std::ptrdiff_t>(i.raw()), trail.end());
 }
 
@@ -564,12 +555,12 @@ void unification_environment::log_structure(term_index structure_index, int dept
 
     std::cout << identifier_vector[id.raw()];
 
-    if (!structure.children.empty()) {
+    if (structure.num_children > 0) {
         std::cout << '(';
-        log_term(structure.children[0], depth - 1);
-        for (int j = 1; j < structure.children.size(); j++) {
+        log_term(structure[0], depth - 1);
+        for (int j = 1; j < structure.num_children; j++) {
             std::cout << ", ";
-            log_term(structure.children[j], depth - 1);
+            log_term(structure[j], depth - 1);
         }
         std::cout << ')';
     }
@@ -581,10 +572,10 @@ void unification_environment::log_list(term_index list_index, int depth) {
 
     // Progress through the list:
 
-    if (is_compound_term(structure.children[0])) {
-        log_bracketed_term(structure.children[0], depth - 1);
+    if (is_compound_term(structure[0])) {
+        log_bracketed_term(structure[0], depth - 1);
     } else {
-        log_term(structure.children[0], depth - 1);
+        log_term(structure[0], depth - 1);
     }
 
     prolog_struct* current_structure = &structure;
@@ -592,7 +583,7 @@ void unification_environment::log_list(term_index list_index, int depth) {
     while (depth > 0) {
         depth--;
 
-        term_index next_index = current_structure->children[1];
+        term_index next_index = (*current_structure)[1];
         next_index = resolve_bound_variable(next_index);
 
         if (term_vector[next_index.raw()].is_structure()) {
@@ -606,10 +597,10 @@ void unification_environment::log_list(term_index list_index, int depth) {
 
             if (id == ".") {
                 std::cout << ", ";
-                if (is_compound_term(current_structure->children[0])) {
-                    log_bracketed_term(current_structure->children[0], depth);
+                if (is_compound_term(current_structure->at(0))) {
+                    log_bracketed_term(current_structure->at(0), depth);
                 } else {
-                    log_term(current_structure->children[0], depth);
+                    log_term(current_structure->at(0), depth);
                 }
                 continue;
             }
@@ -661,27 +652,27 @@ void unification_environment::log_clause(clause_index idx, int depth) {
 }
 
 void unification_environment::log_compound_term(term_index i, int depth, char seperator) {
-    std::vector<term_index>& term_children = get_struct(i).children;
-    if (is_compound_term(term_children[0])) {
-        log_bracketed_term(term_children[0], depth - 1);
+    prolog_struct& structure = get_struct(i);
+    if (is_compound_term(structure[0])) {
+        log_bracketed_term(structure[0], depth - 1);
     } else {
-        log_term(term_children[0], depth - 1);
+        log_term(structure[0], depth - 1);
     }
 
-    for (int j = 1; j < term_children.size(); j++) {
+    for (int j = 1; j < structure.num_children; j++) {
         std::cout << seperator << ' ';
-        if (is_compound_term(term_children[j])) {
-            log_bracketed_term(term_children[j], depth - 1);
+        if (is_compound_term(structure[j])) {
+            log_bracketed_term(structure[j], depth - 1);
         } else {
-            log_term(term_children[j], depth - 1);
+            log_term(structure[j], depth - 1);
         }
     }
 }
 
 void unification_environment::log_infix_term(term_index i, int depth, const std::string &infix_operator) {
-    std::vector<term_index>& term_children = get_struct(i).children;
-    term_index left_index = term_children[0];
-    term_index right_index = term_children[1];
+    prolog_struct& structure = get_struct(i);
+    term_index left_index = structure[0];
+    term_index right_index = structure[1];
 
     if (is_infix_term(left_index) || is_compound_term(left_index)) {
         log_bracketed_term(left_index, depth - 1);
@@ -704,8 +695,8 @@ term_index unification_environment::evaluate_and_create_arithmetic_term(term_ind
 
 #define CASE_STATEMENT(op)\
 case get_reserved_identifier_index(#op).raw(): {                    \
-    int left = evaluate_arithmetic_term(structure.children[0]);     \
-    int right = evaluate_arithmetic_term(structure.children[1]);    \
+    int left = evaluate_arithmetic_term(structure[0]);              \
+    int right = evaluate_arithmetic_term(structure[1]);             \
     return left op right;                                           \
 }                                                                   \
 

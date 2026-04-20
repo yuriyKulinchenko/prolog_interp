@@ -12,11 +12,125 @@ prolog_var::prolog_var(prolog_var_type type, term_index index)
 
 // prolog_structure
 
-prolog_struct::prolog_struct()
-    : index(identifier_index::invalid()) {}
+prolog_struct::prolog_struct():
+    num_children(0) {}
 
-prolog_struct::prolog_struct(identifier_index index)
-    : index(index) {}
+prolog_struct::prolog_struct(size_t num_children):
+   num_children(num_children),
+   children(num_children > inline_capacity ? new term_index[num_children] : nullptr) {}
+
+prolog_struct::prolog_struct(size_t num_children, identifier_index index):
+    index(index),
+    num_children(num_children),
+    children(num_children > inline_capacity ? new term_index[num_children] : nullptr) {}
+
+prolog_struct::~prolog_struct() {
+    if (num_children > inline_capacity) {
+        delete[] children;
+    }
+}
+
+term_index& prolog_struct::operator[](size_t i) {
+    if (num_children > inline_capacity) {
+        return children[i];
+    }
+    return inline_children[i];
+}
+
+const term_index& prolog_struct::operator[](size_t i) const {
+    if (num_children > inline_capacity) {
+        return children[i];
+    }
+    return inline_children[i];
+}
+
+term_index &prolog_struct::at(size_t i) {
+    return operator[](i);
+}
+
+const term_index &prolog_struct::at(size_t i) const {
+    return operator[](i);
+}
+
+term_index prolog_struct::left() {
+    return inline_children[0];
+}
+
+term_index prolog_struct::right() {
+    return inline_children[1];
+}
+
+prolog_struct::prolog_struct(prolog_struct&& other) noexcept
+    : index(other.index), num_children(other.num_children) {
+    if (num_children > inline_capacity) {
+        children = other.children;
+        other.children = nullptr;
+        other.num_children = 0;
+    } else {
+        for (size_t i = 0; i < num_children; i++) {
+            inline_children[i] = other.inline_children[i];
+        }
+    }
+}
+
+prolog_struct::prolog_struct(const prolog_struct& other)
+    : index(other.index), num_children(other.num_children) {
+    if (num_children > inline_capacity) {
+        children = new term_index[num_children];
+        for (size_t i = 0; i < num_children; i++) {
+            children[i] = other.children[i];
+        }
+    } else {
+        for (size_t i = 0; i < num_children; i++) {
+            inline_children[i] = other.inline_children[i];
+        }
+    }
+}
+
+prolog_struct& prolog_struct::operator=(const prolog_struct& other) {
+    if (this != &other) {
+        if (num_children > inline_capacity) {
+            delete[] children;
+        }
+
+        index = other.index;
+        num_children = other.num_children;
+
+        if (num_children > inline_capacity) {
+            children = new term_index[num_children];
+            for (size_t i = 0; i < num_children; i++) {
+                children[i] = other.children[i];
+            }
+        } else {
+            for (size_t i = 0; i < num_children; i++) {
+                inline_children[i] = other.inline_children[i];
+            }
+        }
+    }
+    return *this;
+}
+
+prolog_struct& prolog_struct::operator=(prolog_struct&& other) noexcept {
+    if (this != &other) {
+        if (num_children > inline_capacity) {
+            delete[] children;
+        }
+
+        index = other.index;
+        num_children = other.num_children;
+
+        if (num_children > inline_capacity) {
+            children = other.children;
+            other.children = nullptr;
+            other.num_children = 0;
+        } else {
+            for (size_t i = 0; i < num_children; i++) {
+                inline_children[i] = other.inline_children[i];
+            }
+        }
+    }
+    return *this;
+}
 
 // prolog_term
 
