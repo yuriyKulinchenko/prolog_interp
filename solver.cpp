@@ -5,7 +5,7 @@
 #include "solver.h"
 #include "iostream"
 
-void solver::solve(int goal_index) {
+void solver::solve(term_index goal_index) {
     found_all = false;
     goal_stack.clear();
     history.clear();
@@ -64,33 +64,33 @@ solver &solver::operator++() {
 
         // Identify the goal, and attempt to make progress:
 
-        int goal_index = environment.resolve_bound_variable(peek_goal().term_index);
-        if (environment.term_vector[goal_index].is_integer()) {
+        term_index goal_index = environment.resolve_bound_variable(peek_goal().term_idx);
+        if (environment.term_vector[goal_index.raw()].is_integer()) {
             // Failure state:
             BACKTRACK();
             continue;
         }
-        int identifier_index = environment.get_struct(goal_index).identifier_index;
+        identifier_index id = environment.get_struct(goal_index).index;
 
         // Check for special cases:
 
-        switch (identifier_index) {
-            case unification_environment::get_reserved_identifier_index(","): {
+        switch (id.raw()) {
+            case unification_environment::get_reserved_identifier_index(",").raw(): {
                 goal_stack.pop_back();
                 prolog_struct& conjunction_structure = environment.get_struct(goal_index);
-                int num_children = static_cast<int>(conjunction_structure.children.size());
-                for (int i = num_children - 1; i >= 0; i--){
-                    goal_stack.emplace_back(conjunction_structure.children[i], peek_goal().cut_barrier);
+                size_t num_children = conjunction_structure.num_children;
+                for (int i = static_cast<int>(num_children) - 1; i >= 0; i--) {
+                    goal_stack.emplace_back(conjunction_structure[static_cast<size_t>(i)], peek_goal().cut_barrier);
                 }
                 continue;
             }
 
-            case unification_environment::get_reserved_identifier_index(";"): {
+            case unification_environment::get_reserved_identifier_index(";").raw(): {
                 // Decision points must be placed:
-                std::vector<int>& disjunction_children = environment.get_struct(goal_index).children;
+                size_t num_children = environment.get_struct(goal_index).num_children;
 
                 // decision point can be placed:
-                if (continuation < disjunction_children.size() - 1) {
+                if (continuation < static_cast<int>(num_children) - 1) {
                     // Create copy of goal_stack:
                     auto goal_stack_copy {goal_stack};
                     history.emplace_back(get_timestamp(), goal_stack_copy, continuation + 1);
@@ -99,13 +99,13 @@ solver &solver::operator++() {
                 // Add the relevant child:
                 int cut_barrier = peek_goal().cut_barrier;
                 goal_stack.pop_back();
-                goal_stack.emplace_back(disjunction_children[continuation], cut_barrier);
+                goal_stack.emplace_back(environment.get_struct(goal_index)[static_cast<size_t>(continuation)], cut_barrier);
 
                 continuation = 0;
                 continue;
             }
 
-            case unification_environment::get_reserved_identifier_index("!"): {
+            case unification_environment::get_reserved_identifier_index("!").raw(): {
                 // Remove the cut, adjust the history:
                 int i = peek_goal().cut_barrier;
                 goal_stack.pop_back();
@@ -113,10 +113,9 @@ solver &solver::operator++() {
                 continue;
             }
 
-            case unification_environment::get_reserved_identifier_index("="): {
-                std::vector<int>& children = environment.get_struct(goal_index).children;
-                int left = children[0];
-                int right = children[1];
+            case unification_environment::get_reserved_identifier_index("=").raw(): {
+                term_index left = environment.get_struct(goal_index)[0];
+                term_index right = environment.get_struct(goal_index)[1];
                 bool success = environment.unify(left, right);
                 if (success) {
                     goal_stack.pop_back();
@@ -126,10 +125,9 @@ solver &solver::operator++() {
                 continue;
             }
 
-            case unification_environment::get_reserved_identifier_index("is"): {
-                std::vector<int>& children = environment.get_struct(goal_index).children;
-                int left = children[0];
-                int right = environment.evaluate_and_create_arithmetic_term(children[1]);
+            case unification_environment::get_reserved_identifier_index("is").raw(): {
+                term_index left = environment.get_struct(goal_index)[0];
+                term_index right = environment.evaluate_and_create_arithmetic_term(environment.get_struct(goal_index)[1]);
                 bool success = environment.unify(left, right);
                 if (success) {
                     goal_stack.pop_back();
@@ -139,10 +137,9 @@ solver &solver::operator++() {
                 continue;
             }
 
-            case unification_environment::get_reserved_identifier_index("<"): {
-                std::vector<int>& children = environment.get_struct(goal_index).children;
-                int left = environment.evaluate_arithmetic_term(children[0]);
-                int right = environment.evaluate_arithmetic_term(children[1]);
+            case unification_environment::get_reserved_identifier_index("<").raw(): {
+                int left = environment.evaluate_arithmetic_term(environment.get_struct(goal_index)[0]);
+                int right = environment.evaluate_arithmetic_term(environment.get_struct(goal_index)[1]);
                 bool success = left < right;
                 if (success) {
                     goal_stack.pop_back();
@@ -152,10 +149,9 @@ solver &solver::operator++() {
                 continue;
             }
 
-            case unification_environment::get_reserved_identifier_index(">"): {
-                std::vector<int>& children = environment.get_struct(goal_index).children;
-                int left = environment.evaluate_arithmetic_term(children[0]);
-                int right = environment.evaluate_arithmetic_term(children[1]);
+            case unification_environment::get_reserved_identifier_index(">").raw(): {
+                int left = environment.evaluate_arithmetic_term(environment.get_struct(goal_index)[0]);
+                int right = environment.evaluate_arithmetic_term(environment.get_struct(goal_index)[1]);
                 bool success = left > right;
                 if (success) {
                     goal_stack.pop_back();
@@ -165,27 +161,27 @@ solver &solver::operator++() {
                 continue;
             }
 
-            case unification_environment::get_reserved_identifier_index("fail"): {
+            case unification_environment::get_reserved_identifier_index("fail").raw(): {
                 BACKTRACK();
                 continue;
             }
 
-            case unification_environment::get_reserved_identifier_index("halt"): {
+            case unification_environment::get_reserved_identifier_index("halt").raw(): {
                 throw std::logic_error("EXECUTION HALTED");
             }
 
             default:
         }
 
-        std::pair clause_range = environment.identifier_clause_map[identifier_index];
+        auto clause_range = environment.identifier_clause_map[id.raw()];
 
-        if (clause_range.second != 0) {
-            clause_range = environment.identifier_clause_map[identifier_index];
+        if (clause_range.second != clause_index{0}) {
+            clause_range = environment.identifier_clause_map[id.raw()];
         }
 
-        int lower_bound = clause_range.first;
-        int upper_bound = clause_range.second;
-        int choice_count = upper_bound - lower_bound;
+        clause_index lower_bound = clause_range.first;
+        clause_index upper_bound = clause_range.second;
+        int choice_count = static_cast<int>(upper_bound.raw() - lower_bound.raw());
 
 
         bool progress_made = false;
@@ -234,15 +230,16 @@ solver::decision_point solver::pop_history() {
     history.pop_back();
     return return_point;
 }
-bool solver::apply_clause(int clause_index, int choice_number, bool add_decision_point) {
-    clause_index = clause_index + choice_number;
+
+bool solver::apply_clause(clause_index clause_idx, int choice_number, bool add_decision_point) {
+    clause_index final_idx = clause_idx + static_cast<size_t>(choice_number);
     prolog_timestamp timestamp = get_timestamp();
     goal goal_instance = pop_goal();
 
-    int duplicate_clause_index = environment.duplicate_clause(clause_index);
-    prolog_clause& duplicate_clause = environment.get_clause(duplicate_clause_index);
+    clause_index dup_idx = environment.duplicate_clause(final_idx);
+    prolog_clause& duplicate_clause = environment.get_clause(dup_idx);
 
-    if (!environment.unify(goal_instance.term_index, duplicate_clause.head)) {
+    if (!environment.unify(goal_instance.term_idx, duplicate_clause.head)) {
         apply_timestamp(timestamp);
         goal_stack.push_back(goal_instance);
         return false;
@@ -254,16 +251,16 @@ bool solver::apply_clause(int clause_index, int choice_number, bool add_decision
         history.emplace_back(timestamp, saved_stack, choice_number + 1);
     }
 
-    if (duplicate_clause.body == -1) return true;
+    if (duplicate_clause.body == term_index::invalid()) return true;
 
-    prolog_term& body = environment.term_vector[duplicate_clause.body];
+    prolog_term& body = environment.term_vector[duplicate_clause.body.raw()];
 
     if (body.is_structure() &&
-        body.structure().identifier_index == unification_environment::get_reserved_identifier_index(",")) {
+        body.structure().index == unification_environment::get_reserved_identifier_index(",")) {
         prolog_struct& conjunction = body.structure();
-        int num_children = static_cast<int>(conjunction.children.size());
-        for (int i = num_children - 1; i >= 0; --i) {
-            goal_stack.emplace_back(conjunction.children[i], goal_instance.cut_barrier);
+        size_t num_children = conjunction.num_children;
+        for (int i = static_cast<int>(num_children) - 1; i >= 0; --i) {
+            goal_stack.emplace_back(conjunction[static_cast<size_t>(i)], goal_instance.cut_barrier);
         }
         } else {
             goal_stack.emplace_back(duplicate_clause.body, goal_instance.cut_barrier);
@@ -280,23 +277,22 @@ int solver::restore_decision_point() {
 }
 
 prolog_timestamp solver::get_timestamp() {
-    return
-    {
-        static_cast<int>(environment.term_vector.size()),
-        static_cast<int>(environment.clause_vector.size()),
-        static_cast<int>(environment.trail.size()),
+    return {
+        term_index{environment.term_vector.size()},
+        clause_index{environment.clause_vector.size()},
+        trail_index{environment.trail.size()}
     };
 }
 
 void solver::apply_timestamp(prolog_timestamp timestamp) {
-    environment.unwind_term_vector(timestamp.term_index);
-    environment.unwind_clause_vector(timestamp.clause_index);
-    environment.unwind_trail(timestamp.trail_index);
+    environment.unwind_term_vector(timestamp.term_index_);
+    environment.unwind_clause_vector(timestamp.clause_index_);
+    environment.unwind_trail(timestamp.trail_index_);
 }
 
 void solver::log_goal(goal goal_instance) {
     // std::cout << '{';
-    environment.log_term(goal_instance.term_index);
+    environment.log_term(goal_instance.term_idx);
     // << ", " << goal_instance.cut_barrier << '}';
 }
 
@@ -305,7 +301,7 @@ void solver::log_goal_stack(std::vector<goal> goal_stack_instance) {
     std::cout << '[';
     if (!goal_stack_instance.empty()) {
         log_goal(goal_stack_instance[0]);
-        for (int i = 1; i < goal_stack_instance.size(); i++) {
+        for (int i = 1; i < static_cast<int>(goal_stack_instance.size()); i++) {
             std::cout << ", ";
             log_goal(goal_stack_instance[i]);
         }
@@ -325,11 +321,10 @@ void solver::log_history() {
     std::cout << '[';
     if (!history.empty()) {
         log_decision_point(history[0]);
-        for (int i = 1; i < history.size(); i++) {
+        for (int i = 1; i < static_cast<int>(history.size()); i++) {
             std::cout << ", ";
             log_decision_point(history[i]);
         }
     }
     std::cout << ']';
 }
-

@@ -33,11 +33,11 @@ Main execution loop:
 class solver {
 public:
     struct goal {
-        goal(int term_index, int cut_barrier):
-        term_index(term_index), cut_barrier(cut_barrier) {}
-        goal(): term_index(-1), cut_barrier(-1) {}
+        goal(term_index idx, int cut_barrier):
+        term_idx(idx), cut_barrier(cut_barrier) {}
+        goal(): term_idx(term_index::invalid()), cut_barrier(-1) {}
 
-        int term_index;
+        term_index term_idx;
         int cut_barrier;
     };
 
@@ -52,7 +52,7 @@ public:
 
     explicit solver(unification_environment& environment):
     environment(environment), found_all(false) {}
-    void solve(int goal_index);
+    void solve(term_index goal_index);
     solver& operator++();
     bool operator*();
 
@@ -91,7 +91,7 @@ private:
 
      */
 
-    bool apply_clause(int clause_index, int choice_number, bool add_decision_point = true);
+    bool apply_clause(clause_index clause_idx, int choice_number, bool add_decision_point = true);
 
     /*
 

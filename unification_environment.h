@@ -23,7 +23,6 @@ What does an environment look like?
 - Terms can be added to the arena
 
 Another facility: conversion from AST to term
-/*
 
 Current problem: Store and instantiate goals
 - Goals are stored as a head and a body
@@ -33,10 +32,6 @@ Current problem: Store and instantiate goals
 - And then attempt to unify p(A,B) with p(v1,v2)
 - I can then add q(v1), r(v2) to the goal stack
 - When adding a goal, the name mapping should be cleared
-
-*/
-
-/*
 
 What is a sensible representation for a decision point?
 A decision point is uniquely identified by:

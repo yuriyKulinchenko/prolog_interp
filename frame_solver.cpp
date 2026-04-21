@@ -73,7 +73,7 @@ int right_val = env.evaluate_arithmetic_term(structure.right());            \
 if (cond) {                                                                 \
 unwind();                                                                   \
 } else {                                                                    \
-BACKTRACK();                                                                \
+if(!backtrack()) return *this;                                              \
 }                                                                           \
 continue;                                                                   \
 }                                                                           \
@@ -100,14 +100,6 @@ void frame_solver::solve(term_index goal_index) {
     add_frame(goal_index);
 }
 
-#define BACKTRACK()\
-do {                                    \
-    if (!restore_decision_point()) {    \
-        found_all = true;               \
-        return *this;                   \
-    }                                   \
-} while(false)                          \
-
 #ifdef FRAME_SOLVER_DEBUG
 #define PRINT_TRACE()\
 do {                    \
@@ -128,7 +120,7 @@ do {                    \
 frame_solver &frame_solver::operator++() {
 
     if (stack_index == frame_index::invalid()) {
-        BACKTRACK();
+        if (!backtrack()) return *this;
         PRINT_TRACE();
     }
 
@@ -169,7 +161,7 @@ frame_solver &frame_solver::operator++() {
                         if (env.unify(left, right)) {
                             unwind();
                         } else {
-                            BACKTRACK();
+                            if (!backtrack()) return *this;
                         }
                         continue;
                     }
@@ -181,7 +173,7 @@ frame_solver &frame_solver::operator++() {
 
                         if (env.unify(left, right)) {
                             env.apply_timestamp(timestamp);
-                            BACKTRACK();
+                            if (!backtrack()) return *this;
                         } else {
                             unwind();
                         }
@@ -237,7 +229,7 @@ frame_solver &frame_solver::operator++() {
                     }
                 }
 
-                BACKTRACK();
+                if (!backtrack()) return *this;
                 break;
             }
 
@@ -302,6 +294,16 @@ void frame_solver::unwind() {
         stack_index = stack[stack_index.raw()].parent;
     }
 }
+
+// Returns whether backtrack was successful
+bool frame_solver::backtrack() {
+    if (!restore_decision_point()) {
+        found_all = true;
+        return false;
+    }
+    return true;
+}
+
 
 bool frame_solver::restore_decision_point() {
     if (history.empty()) return false;

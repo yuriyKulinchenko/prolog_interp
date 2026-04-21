@@ -19,9 +19,14 @@ public:
     frame_solver& operator++();
     bool operator*() const;
 
+    void step();
+
     application_result apply_clause(clause_index clause_idx, term_index head_index,
         frame_index parent, frame_history_index cut_point, continuation_state parent_continuation);
+
     void unwind();
+    bool backtrack();
+
     void log_frame_stack();
     void log_history();
     [[nodiscard]] bool at_end() const;
@@ -31,6 +36,10 @@ private:
     bool restore_decision_point();
     frame_index top_index();
     void log_frame(frame& frame_);
+
+    bool handle_rule(frame& current_frame);
+    bool handle_conjunction(frame& current_frame);
+    bool handle_disjunction(frame& current_frame);
 
     unification_environment& env;
     std::vector<decision_point> history;
