@@ -54,6 +54,13 @@ When the VM encounters a rule, it does the following:
 
 More details to follow...
 
+
+More complex predicates: negation and findall
+
+
+find_lessons(Bag) :-
+    findall(X, happening(X,chemistry), Bag).
+
 */
 
 
@@ -192,45 +199,55 @@ frame_solver &frame_solver::operator++() {
                 continuation_state continuation = current_frame.continuation;
                 frame_history_index cut_point = current_frame.cut_point;
 
-                // Check if the rule is actually valid:
                 auto [lower_bound, upper_bound] =
                          env.identifier_clause_map[structure.index.raw()];
 
-                if (upper_bound != clause_index{0}) {
-                    size_t decision_range = upper_bound.raw() - lower_bound.raw();
+                // If the clause is not valid, immediately return:
+                if (upper_bound == clause_index{0}) {
+                    if (!backtrack()) return *this;
+                    continue;
+                }
 
-                    application_result result = application_result::FAILURE;
-                    term_index head_index = current_frame.index;
-                    size_t decision_index = current_frame.decision_index;
+                size_t decision_range = upper_bound.raw() - lower_bound.raw();
 
-                    for (size_t i = decision_index; i < decision_range; i++) {
-                        clause_index clause_idx = lower_bound + i;
-                        frame_index parent = stack_index;
+                application_result result = application_result::FAILURE;
+                term_index head_index = current_frame.index;
+                size_t decision_index = current_frame.decision_index;
 
-                        // Attempt clause application:
-                        result = apply_clause(clause_idx, head_index, parent, cut_point, continuation);
-                        if (is_success(result)) {
-                            if (i + 1 < decision_range) {
-                                // If possible, place a decision point:
-                                history.emplace_back(timestamp, stack_index, stack_size, i + 1);
-                            }
-                            break;
+                // // Tail call optimization:
+                // if (decision_range == 1) {
+                //     result = apply_clause_tail(lower_bound, stack_index, current_frame);
+                //
+                //     switch (result) {
+                //         using enum application_result;
+                //         case FACT: unwind();
+                //         case RULE: continue;
+                //         case FAILURE: if (!backtrack()) return *this;
+                //     }
+                //     continue;
+                // }
+
+                for (size_t i = decision_index; i < decision_range; i++) {
+                    clause_index clause_idx = lower_bound + i;
+                    frame_index parent = stack_index;
+
+                    // Attempt clause application:
+                    result = apply_clause(clause_idx, head_index, parent, cut_point, continuation);
+                    if (is_success(result)) {
+                        if (i + 1 < decision_range) {
+                            // If possible, place a decision point:
+                            history.emplace_back(timestamp, stack_index, stack_size, i + 1);
                         }
-                    }
-
-                    if (is_fact(result)) {
-                        unwind();
-                        continue;
-                    }
-
-                    if (is_rule(result)) {
-                        stack_index = top_index();
-                        continue;
+                        break;
                     }
                 }
 
-                if (!backtrack()) return *this;
-                break;
+                switch (result) {
+                    using enum application_result;
+                    case FACT: unwind(); continue;
+                    case RULE: stack_index = top_index(); continue;
+                    case FAILURE: if (!backtrack()) return *this; continue;
+                }
             }
 
             case DISJUNCTION: {
@@ -349,39 +366,51 @@ application_result frame_solver::apply_clause(clause_index clause_idx, term_inde
     return application_result::FAILURE;
 }
 
-void frame_solver::add_frame(term_index index, frame_index parent, frame_history_index cut_point, continuation_state parent_continuation) {
+application_result frame_solver::apply_clause_tail(clause_index clause_idx, frame_index stack_index, frame& current_frame) {
+    term_index head_idx = stack[stack_index.raw()].index;
+
+    prolog_timestamp timestamp = env.get_timestamp();
+    clause_index duplicate_index = env.duplicate_clause(clause_idx);
+    prolog_clause& duplicate_clause = env.get_clause(duplicate_index);
+
+    if (env.unify(head_idx, duplicate_clause.head)) {
+
+        if (duplicate_clause.body != term_index::invalid()) {
+            current_frame.index = duplicate_clause.body;
+            return application_result::RULE;
+        }
+        return application_result::FACT;
+    }
+
+    env.apply_timestamp(timestamp);
+    return application_result::FAILURE;
+}
+
+frame_type identifier_index_to_frame_type(identifier_index i) {
+    switch (i.raw()) {
+        using enum frame_type;
+        CASE(","): return CONJUNCTION;
+        CASE(";"): return DISJUNCTION;
+        CASE("!"): return CUT;
+        default: return RULE;
+    }
+}
+
+void frame_solver::add_frame(term_index index, frame_index parent,
+    frame_history_index cut_point, continuation_state parent_continuation) {
     ASSERT(index.raw() < env.term_vector.size());
-    using enum frame_type;
     prolog_term& term = env.term_vector[index.raw()];
     switch (term.type) {
         using enum prolog_term_type;
+        using enum frame_type;
         case STRUCTURE: {
             prolog_struct& structure = env.get_struct(index);
-            switch (structure.index.raw()) {
-                CASE(","): {
-                    stack.emplace_back(CONJUNCTION, index, parent,
-                        cut_point, parent_continuation);
-                    return;
-                }
-
-                CASE(";"): {
-                    stack.emplace_back(DISJUNCTION, index, parent,
-                        cut_point, parent_continuation);
-                    return;
-                }
-
-                CASE("!"): {
-                    stack.emplace_back(CUT, index, parent,
-                        cut_point, parent_continuation);
-                    return;
-                }
-
-                default: {
-                    stack.emplace_back(RULE, index, parent,
-                        frame_history_index{history.size()}, parent_continuation);
-                    return;
-                }
+            frame_type frame_type_ = identifier_index_to_frame_type(structure.index);
+            if (frame_type_ == RULE) {
+                cut_point = frame_history_index{history.size()};
             }
+            stack.emplace_back(frame_type_, index, parent, cut_point, parent_continuation);
+            break;
         }
 
         default: {
@@ -424,13 +453,13 @@ void frame_solver::log_frame(frame &frame_) {
     // Parent:
 
     if constexpr (frame_logger_configuration::log_parent) {
-        std::cout << ", parent: " << frame_.parent.raw();
+        std::cout << ", parent: " << frame_.parent;
     }
 
     // Cut point:
 
     if constexpr (frame_logger_configuration::log_cut_point) {
-        std::cout << ", cut_point: " << frame_.cut_point.raw();
+        std::cout << ", cut_point: " << frame_.cut_point;
     }
 
     print_green("]");
@@ -452,7 +481,7 @@ void frame_solver::log_history() {
     if (history.empty()) std::cout << "EMPTY";
     else {
         for (decision_point& dp: history) {
-            std::cout << "[stack_index: " << dp.stack_index.raw() << ", decision_index: " << dp.decision_index << ']';
+            std::cout << "[stack_index: " << dp.stack_index << ", decision_index: " << dp.decision_index << ']';
         }
     }
     std::cout << '\n';

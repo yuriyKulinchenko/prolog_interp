@@ -24,6 +24,8 @@ public:
     application_result apply_clause(clause_index clause_idx, term_index head_index,
         frame_index parent, frame_history_index cut_point, continuation_state parent_continuation);
 
+    application_result apply_clause_tail(clause_index clause_idx, frame_index stack_index, frame& current_frame);
+
     void unwind();
     bool backtrack();
 

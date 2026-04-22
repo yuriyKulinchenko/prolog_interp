@@ -46,6 +46,14 @@ struct std::hash<strong_index<Tag>> {
     }
 };
 
+template<typename Tag>
+std::ostream& operator<<(std::ostream& stream, strong_index<Tag> index) {
+    if (index == strong_index<Tag>::invalid()) {
+        return stream << "null";
+    }
+    return stream << index.raw();
+}
+
 #define RED     "\033[31m"
 #define GREEN   "\033[32m"
 #define RESET   "\033[0m"
