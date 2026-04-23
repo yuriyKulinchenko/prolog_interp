@@ -13,15 +13,15 @@ public:
     using frame = frame_solver_types::frame;
     using decision_point = frame_solver_types::decision_point;
 
-    explicit frame_solver(unification_environment &environment):
+    explicit frame_solver(unification_environment& environment):
         env(environment), found_all(false) {
     }
 
     void solve(term_index goal_index);
-    frame_solver &operator++();
+    frame_solver& operator++();
     bool operator*() const;
 
-    void step();
+    frame_solver_types::step_type step();
 
     application_result apply_clause(clause_index clause_idx,
                                     term_index head_index,
@@ -31,7 +31,7 @@ public:
 
     application_result apply_clause_tail(clause_index clause_idx,
                                          frame_index stack_index,
-                                         frame &current_frame);
+                                         frame& current_frame);
 
     void unwind();
     bool backtrack();
@@ -49,16 +49,16 @@ private:
 
     bool restore_decision_point();
     frame_index top_index();
-    void log_frame(frame &frame_);
+    void log_frame(frame& frame_);
 
     // These return 'true' if execution can proceed
-    bool handle_rule(frame &current_frame);
-    void handle_conjunction(frame &current_frame);
-    void handle_disjunction(frame &current_frame);
-    void handle_cut(frame &current_frame);
+    bool handle_rule(frame& current_frame);
+    void handle_conjunction(frame& current_frame);
+    void handle_disjunction(frame& current_frame);
+    void handle_cut(frame& current_frame);
 
 
-    unification_environment &env;
+    unification_environment& env;
     std::vector<decision_point> history;
     std::vector<frame> stack;
     bool found_all;

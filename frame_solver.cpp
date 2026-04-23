@@ -121,34 +121,66 @@ frame_solver& frame_solver::operator++() {
         frame& current_frame = stack[stack_index.raw()];
 
         switch (current_frame.type) {
-            using enum frame_type;
 
-        case RULE: {
+        case frame_type::RULE: {
             if (!handle_rule(current_frame)) return *this;
             continue;
         }
 
-        case CONJUNCTION: {
+        case frame_type::CONJUNCTION: {
             handle_conjunction(current_frame);
             continue;
         }
 
-        case DISJUNCTION: {
+        case frame_type::DISJUNCTION: {
             handle_disjunction(current_frame);
             continue;
         }
 
-        case CUT: {
+        case frame_type::CUT: {
             handle_cut(current_frame);
             continue;
         }
 
-        default: {
+        default:
             throw std::logic_error{"Not implemented"};
-        }
         }
     }
     return *this;
+}
+
+step_type frame_solver::step() {
+    using enum step_type;
+    if (stack_index == frame_index::invalid()) {
+        return backtrack() ? BACKTRACK : FINISH;
+    }
+
+    frame& current_frame = stack[stack_index.raw()];
+
+    switch (current_frame.type) {
+
+    case frame_type::RULE: {
+        return handle_rule(current_frame) ? INVOKE_RULE : BACKTRACK;
+    }
+
+    case frame_type::CONJUNCTION: {
+        handle_conjunction(current_frame);
+        return INVOKE_CONJUNCTION;
+    }
+
+    case frame_type::DISJUNCTION: {
+        handle_disjunction(current_frame);
+        return INVOKE_DISJUNCTION;
+    }
+
+    case frame_type::CUT: {
+        handle_cut(current_frame);
+        return CUT;
+    }
+
+    default:
+        throw std::logic_error{"Not implemented"};
+    }
 }
 
 #define COMPARISON_CASE(op, cond)\

@@ -80,6 +80,10 @@ struct decision_point {
 enum class application_result {
     RULE, FACT, FAILURE
 };
+
+enum class step_type {
+    FINISH, BACKTRACK, INVOKE_RULE, INVOKE_CONJUNCTION, INVOKE_DISJUNCTION, CUT
+};
 }
 
 struct frame_logger_configuration {
