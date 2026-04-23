@@ -51,9 +51,11 @@ private:
     frame_index top_index();
     void log_frame(frame &frame_);
 
+    // These return 'true' if execution can proceed
     bool handle_rule(frame &current_frame);
-    bool handle_conjunction(frame &current_frame);
-    bool handle_disjunction(frame &current_frame);
+    void handle_conjunction(frame &current_frame);
+    void handle_disjunction(frame &current_frame);
+    void handle_cut(frame &current_frame);
 
 
     unification_environment &env;
