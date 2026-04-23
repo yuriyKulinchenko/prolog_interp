@@ -12,7 +12,8 @@ std::vector<token> lexer::run() {
             current_line_index = i;
         }
 
-        if (is_whitespace(c)) continue;
+        if (is_whitespace(c))
+            continue;
         if (c == '%') {
             while (!at_end() && peek() != '\n') {
                 advance();
@@ -23,123 +24,123 @@ std::vector<token> lexer::run() {
         switch (c) {
             using enum token_type;
 
-            case '.': {
-                emit_token(DOT);
+        case '.': {
+            emit_token(DOT);
+            break;
+        }
+
+        case ',': {
+            emit_token(COMMA);
+            break;
+        }
+
+        case ';': {
+            emit_token(SEMI_COLON);
+            break;
+        }
+
+        case '|': {
+            emit_token(PIPE);
+            break;
+        }
+
+        case '!': {
+            emit_token(EXCLAMATION_MARK);
+            break;
+        }
+
+        case '?': {
+            emit_token(QUESTION_MARK);
+            break;
+        }
+
+        case '(': {
+            emit_token(PAREN_OPEN);
+            break;
+        }
+
+        case ')': {
+            emit_token(PAREN_CLOSED);
+            break;
+        }
+
+        case '[': {
+            emit_token(SQUARE_OPEN);
+            break;
+        }
+
+        case ']': {
+            emit_token(SQUARE_CLOSED);
+            break;
+        }
+
+        case '+': {
+            emit_token(PLUS);
+            break;
+        }
+
+        case '-': {
+            emit_token(MINUS);
+            break;
+        }
+
+        case '*': {
+            emit_token(STAR);
+            break;
+        }
+
+        case '/': {
+            emit_token(SLASH);
+            break;
+        }
+
+        case '=': {
+            emit_token(EQUAL);
+            break;
+        }
+
+        case '<': {
+            emit_token(LESS_THAN);
+            break;
+        }
+
+        case '>': {
+            emit_token(MORE_THAN);
+            break;
+        }
+
+        case '\\': {
+            switch (advance()) {
+            case '=':
+                emit_token(NOT_EQUAL);
                 break;
-            }
-
-            case ',': {
-                emit_token(COMMA);
+            case '+':
+                emit_token(NOT);
                 break;
+            default:
+                throw lexer_error("Expect '\\' to be followed by '=' or '+'");
             }
+            break;
+        }
 
-            case ';': {
-                emit_token(SEMI_COLON);
-                break;
+        case ':': {
+            consume('-', "Expect '-' to follow ':' in rule operator");
+            emit_token(RULE_OPERATOR);
+            break;
+        }
+
+        default: {
+            // Either variable, symbol or integer:
+            i--;
+            if (is_alpha(c)) {
+                emit_string();
+            } else if (is_num(c)) {
+                emit_integer();
+            } else {
+                throw lexer_error(
+                    std::format("Unsupported character: '{}'", c));
             }
-
-            case '|': {
-                emit_token(PIPE);
-                break;
-            }
-
-            case '!': {
-                emit_token(EXCLAMATION_MARK);
-                break;
-            }
-
-            case '?': {
-                emit_token(QUESTION_MARK);
-                break;
-            }
-
-            case '(': {
-                emit_token(PAREN_OPEN);
-                break;
-            }
-
-            case ')': {
-                emit_token(PAREN_CLOSED);
-                break;
-            }
-
-            case '[': {
-                emit_token(SQUARE_OPEN);
-                break;
-            }
-
-            case ']': {
-                emit_token(SQUARE_CLOSED);
-                break;
-            }
-
-            case '+': {
-                emit_token(PLUS);
-                break;
-            }
-
-            case '-': {
-                emit_token(MINUS);
-                break;
-            }
-
-            case '*': {
-                emit_token(STAR);
-                break;
-            }
-
-            case '/': {
-                emit_token(SLASH);
-                break;
-            }
-
-            case '=': {
-                emit_token(EQUAL);
-                break;
-            }
-
-            case '<': {
-                emit_token(LESS_THAN);
-                break;
-            }
-
-            case '>': {
-                emit_token(MORE_THAN);
-                break;
-            }
-
-            case '\\': {
-                switch (advance()) {
-                    case '=': emit_token(NOT_EQUAL); break;
-                    case '+': emit_token(NOT); break;
-                    default:
-                        throw lexer_error("Expect '\\' to be followed by '=' or '+'");
-                }
-                break;
-            }
-
-
-            case ':': {
-                consume('-', "Expect '-' to follow ':' in rule operator");
-                emit_token(RULE_OPERATOR);
-                break;
-            }
-
-            default: {
-                // Either variable, symbol or integer:
-                i--;
-                if (is_alpha(c)) {
-                    emit_string();
-                }
-
-                else if (is_num(c)) {
-                    emit_integer();
-                }
-
-                else {
-                    throw lexer_error(std::format("Unsupported character: '{}'", c));
-                }
-            }
+        }
         }
     }
 #ifdef LEXER_DEBUG
@@ -148,7 +149,7 @@ std::vector<token> lexer::run() {
     return token_vector;
 }
 
-void lexer::reset(std::string&& source_code) {
+void lexer::reset(std::string &&source_code) {
     source_code = std::move(source_code);
     token_vector.clear();
     i = 0;
@@ -171,7 +172,7 @@ char lexer::advance() {
 }
 
 char lexer::advance(int n) {
-    return source_code[i+=n];
+    return source_code[i += n];
 }
 
 
@@ -187,8 +188,9 @@ bool lexer::match(char c) {
     return false;
 }
 
-char lexer::consume(char c, const std::string& error_message) {
-    if (!match(c)) throw lexer_error(error_message);
+char lexer::consume(char c, const std::string &error_message) {
+    if (!match(c))
+        throw lexer_error(error_message);
     return c;
 }
 
@@ -220,7 +222,7 @@ bool lexer::at_end() {
     return source_code.length() == i;
 }
 
-void lexer::emit_token(token_type type, const std::string& identifier) {
+void lexer::emit_token(token_type type, const std::string &identifier) {
     token_vector.emplace_back(type, identifier, get_text_position());
 }
 
@@ -234,7 +236,7 @@ void lexer::emit_token(token_type type) {
 
 void lexer::emit_string() {
     int start = i;
-    while(is_alphanum(peek())) {
+    while (is_alphanum(peek())) {
         advance();
     }
     std::string identifier = source_code.substr(start, i - start);
@@ -247,8 +249,9 @@ void lexer::emit_string() {
         emit_token(token_type::IS);
         return;
     } else {
-        type = is_alpha_capital(source_code[start]) ?
-        token_type::VARIABLE : token_type::SYMBOL;
+        type = is_alpha_capital(source_code[start])
+                   ? token_type::VARIABLE
+                   : token_type::SYMBOL;
     }
 
     emit_token(type, identifier);
@@ -268,8 +271,8 @@ void lexer::emit_integer() {
     emit_token(token_type::INTEGER, integer);
 }
 
-std::logic_error lexer::lexer_error(const std::string& error_message) {
-    std::string current_line {fetch_current_line()};
+std::logic_error lexer::lexer_error(const std::string &error_message) {
+    std::string current_line{fetch_current_line()};
 
     std::string position_error = generate_position_error_string(
         current_line,
@@ -278,11 +281,11 @@ std::logic_error lexer::lexer_error(const std::string& error_message) {
 
     return std::logic_error(
         std::format("\nLEXER ERROR: {}\n{}",
-        error_message, position_error));
+                    error_message, position_error));
 }
 
 std::string_view lexer::fetch_current_line() {
-   return fetch_line_at(current_line_index);
+    return fetch_line_at(current_line_index);
 }
 
 std::string_view lexer::fetch_line_at(int index) {

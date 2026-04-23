@@ -11,55 +11,101 @@
 #include <functional>
 #include <limits>
 
-template<typename Tag>
+template <typename Tag>
 struct strong_index {
-    explicit constexpr strong_index(size_t v) noexcept : value(v) {}
+    explicit constexpr strong_index(size_t v) noexcept : value(v) {
+    }
+
     strong_index() = default;
 
-    template<typename OtherTag>
+    template <typename OtherTag>
     strong_index(strong_index<OtherTag>) = delete;
 
     [[nodiscard]] constexpr size_t raw() const noexcept { return value; }
 
-    constexpr bool operator==(strong_index other) const noexcept { return value == other.value; }
-    constexpr bool operator!=(strong_index other) const noexcept { return value != other.value; }
-    constexpr bool operator< (strong_index other) const noexcept { return value <  other.value; }
-    constexpr bool operator<=(strong_index other) const noexcept { return value <= other.value; }
-    constexpr bool operator> (strong_index other) const noexcept { return value >  other.value; }
-    constexpr bool operator>=(strong_index other) const noexcept { return value >= other.value; }
+    constexpr bool operator==(strong_index other) const noexcept {
+        return value == other.value;
+    }
 
-    constexpr strong_index operator+(size_t n) const noexcept { return strong_index(value + n); }
-    constexpr strong_index operator-(size_t n) const noexcept { return strong_index(value - n); }
-    constexpr strong_index& operator++() noexcept { ++value; return *this; }
-    constexpr strong_index  operator++(int) noexcept { auto tmp = *this; ++value; return tmp; }
-    constexpr strong_index& operator--() noexcept { --value; return *this; }
-    constexpr strong_index  operator--(int) noexcept { auto tmp = *this; --value; return tmp; }
+    constexpr bool operator!=(strong_index other) const noexcept {
+        return value != other.value;
+    }
 
-    static consteval strong_index invalid() noexcept { return strong_index{std::numeric_limits<size_t>::max()}; }
+    constexpr bool operator<(strong_index other) const noexcept {
+        return value < other.value;
+    }
+
+    constexpr bool operator<=(strong_index other) const noexcept {
+        return value <= other.value;
+    }
+
+    constexpr bool operator>(strong_index other) const noexcept {
+        return value > other.value;
+    }
+
+    constexpr bool operator>=(strong_index other) const noexcept {
+        return value >= other.value;
+    }
+
+    constexpr strong_index operator+(size_t n) const noexcept {
+        return strong_index(value + n);
+    }
+
+    constexpr strong_index operator-(size_t n) const noexcept {
+        return strong_index(value - n);
+    }
+
+    constexpr strong_index &operator++() noexcept {
+        ++value;
+        return *this;
+    }
+
+    constexpr strong_index operator++(int) noexcept {
+        auto tmp = *this;
+        ++value;
+        return tmp;
+    }
+
+    constexpr strong_index &operator--() noexcept {
+        --value;
+        return *this;
+    }
+
+    constexpr strong_index operator--(int) noexcept {
+        auto tmp = *this;
+        --value;
+        return tmp;
+    }
+
+    static consteval strong_index invalid() noexcept {
+        return strong_index{std::numeric_limits<size_t>::max()};
+    }
+
     size_t value{};
 };
 
-template<typename Tag>
+template <typename Tag>
 struct std::hash<strong_index<Tag>> {
     size_t operator()(strong_index<Tag> idx) const noexcept {
         return std::hash<size_t>{}(idx.value);
     }
 };
 
-template<typename Tag>
-std::ostream& operator<<(std::ostream& stream, strong_index<Tag> index) {
+template <typename Tag>
+std::ostream &operator<<(std::ostream &stream, strong_index<Tag> index) {
     if (index == strong_index<Tag>::invalid()) {
         return stream << "null";
     }
     return stream << index.raw();
+
 }
 
 #define RED     "\033[31m"
 #define GREEN   "\033[32m"
 #define RESET   "\033[0m"
 
-template<typename T>
-std::ostream& operator<<(std::ostream& stream, std::vector<T>& vector) {
+template <typename T>
+std::ostream &operator<<(std::ostream &stream, std::vector<T> &vector) {
     stream << '[';
     if (vector.size() != 0) {
         stream << vector[0];
@@ -70,8 +116,8 @@ std::ostream& operator<<(std::ostream& stream, std::vector<T>& vector) {
     return stream << ']';
 }
 
-template<typename T, typename U>
-std::ostream& operator<<(std::ostream& stream, std::unordered_map<T, U>& map) {
+template <typename T, typename U>
+std::ostream &operator<<(std::ostream &stream, std::unordered_map<T, U> &map) {
     stream << '{';
 
     auto it = map.begin();
@@ -87,9 +133,10 @@ std::ostream& operator<<(std::ostream& stream, std::unordered_map<T, U>& map) {
     return stream << '}';
 }
 
-inline std::string read_file(const std::string& path) {
+inline std::string read_file(const std::string &path) {
     std::ifstream file(path, std::ios::binary | std::ios::ate);
-    if (!file) throw std::runtime_error("Failed to open file");
+    if (!file)
+        throw std::runtime_error("Failed to open file");
 
     std::streamsize size = file.tellg();
     file.seekg(0);
@@ -100,7 +147,7 @@ inline std::string read_file(const std::string& path) {
     return buffer;
 }
 
-inline std::string generate_select_pointer_string(std::string& s, int i) {
+inline std::string generate_select_pointer_string(std::string &s, int i) {
     int visual = 0;
     for (int j = 0; j <= i; j++) {
         if (s[j] == '\t') {
@@ -112,24 +159,26 @@ inline std::string generate_select_pointer_string(std::string& s, int i) {
     return std::format("{:>{}}", '^', visual);
 }
 
-inline std::string generate_position_error_string(std::string& s, int i, int line_number) {
-        std::string pointer = generate_select_pointer_string(s, i);
-        std::string line_number_string = std::to_string(line_number);
-        std::string padding = std::string(line_number_string.size(), ' ');
-        return std::format("{} │{}\n{} │{}",
-            line_number_string, s, padding, pointer);
+inline std::string generate_position_error_string(
+    std::string &s, int i, int line_number) {
+    std::string pointer = generate_select_pointer_string(s, i);
+    std::string line_number_string = std::to_string(line_number);
+    std::string padding = std::string(line_number_string.size(), ' ');
+    return std::format("{} │{}\n{} │{}",
+                       line_number_string, s, padding, pointer);
 }
 
-template<typename... Args>
-std::logic_error formatted_error(std::format_string<Args...> fmt, Args&&... args) {
+template <typename... Args>
+std::logic_error formatted_error(std::format_string<Args...> fmt,
+                                 Args &&... args) {
     return std::logic_error(std::format(fmt, std::forward<Args>(args)...));
 }
 
-inline void print_green(const std::string& s) {
+inline void print_green(const std::string &s) {
     std::cout << GREEN << s << RESET;
 }
 
-inline void print_red(const std::string& s) {
+inline void print_red(const std::string &s) {
     std::cout << RED << s << RESET;
 }
 

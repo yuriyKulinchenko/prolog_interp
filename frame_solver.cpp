@@ -64,7 +64,6 @@ find_lessons(Bag) :-
 */
 
 
-
 #include "frame_solver.h"
 
 #include <cassert>
@@ -83,8 +82,7 @@ unwind();                                                                   \
 if(!backtrack()) return *this;                                              \
 }                                                                           \
 continue;                                                                   \
-}                                                                           \
-
+}
 using namespace frame_solver_types;
 
 bool is_fact(application_result result) {
@@ -123,191 +121,223 @@ do {                    \
 #endif
 
 
-
 frame_solver &frame_solver::operator++() {
-
     if (stack_index == frame_index::invalid()) {
-        if (!backtrack()) return *this;
+        if (!backtrack())
+            return *this;
         PRINT_TRACE();
     }
 
     while (stack_index != frame_index::invalid()) {
         PRINT_TRACE();
         ASSERT(stack_index.raw() < stack.size());
-        frame& current_frame = stack[stack_index.raw()];
-        ASSERT(current_frame.parent == frame_index::invalid() || current_frame.parent.raw() < stack.size());
+        frame &current_frame = stack[stack_index.raw()];
+        ASSERT(
+            current_frame.parent == frame_index::invalid() || current_frame.
+            parent.
+            raw() < stack.size());
         ASSERT(current_frame.index.raw() < env.term_vector.size());
-        ASSERT(env.term_vector[current_frame.index.raw()].type == prolog_term_type::STRUCTURE);
+        ASSERT(
+            env.term_vector[current_frame.index.raw()].type == prolog_term_type
+            ::
+            STRUCTURE);
 
         switch (current_frame.type) {
             using enum frame_type;
 
-            case RULE: {
-                prolog_struct& structure = env.get_struct(current_frame.index);
-                current_frame.continuation.remains = false;
+        case RULE: {
+            prolog_struct &structure = env.get_struct(current_frame.index);
+            current_frame.continuation.remains = false;
 
-                switch (structure.index.raw()) {
-                    CASE("halt"): throw std::logic_error("EXECUTION HALTED");
+            switch (structure.index.raw()) {
+            CASE("halt"):
+                throw std::logic_error("EXECUTION HALTED");
 
-                    CASE("is"): {
-                        term_index left = structure.left();
-                        if (env.term_vector[left.raw()].is_structure()) {
-                            throw std::logic_error("ERROR: Left hand side of is/2 must be variable or integer");
-                        }
-
-                        term_index right = env.evaluate_and_create_arithmetic_term(structure.right());
-                        env.unify(left, right);
-                        unwind();
-                        continue;
-                    }
-
-                    CASE("="): {
-                        term_index left = structure.left();
-                        term_index right = structure.right();
-
-                        if (env.unify(left, right)) {
-                            unwind();
-                        } else {
-                            if (!backtrack()) return *this;
-                        }
-                        continue;
-                    }
-
-                    CASE("\\="): {
-                        prolog_timestamp timestamp = env.get_timestamp();
-                        term_index left = structure.left();
-                        term_index right = structure.right();
-
-                        if (env.unify(left, right)) {
-                            env.apply_timestamp(timestamp);
-                            if (!backtrack()) return *this;
-                        } else {
-                            unwind();
-                        }
-                        continue;
-                    }
-
-                    COMPARISON_CASE("<", left_val < right_val);
-                    COMPARISON_CASE(">", left_val > right_val);
-                    default:
+            CASE("is"): {
+                term_index left = structure.left();
+                if (env.term_vector[left.raw()].is_structure()) {
+                    throw std::logic_error(
+                        "ERROR: Left hand side of is/2 must be variable or integer");
                 }
 
-                // Get the current state, in case a decision point needs to be recovered:
+                term_index right = env.evaluate_and_create_arithmetic_term(
+                    structure.right());
+                env.unify(left, right);
+                unwind();
+                continue;
+            }
+
+            CASE("="): {
+                term_index left = structure.left();
+                term_index right = structure.right();
+
+                if (env.unify(left, right)) {
+                    unwind();
+                } else {
+                    if (!backtrack())
+                        return *this;
+                }
+                continue;
+            }
+
+            CASE("\\="): {
                 prolog_timestamp timestamp = env.get_timestamp();
-                size_t stack_size = stack.size();
+                term_index left = structure.left();
+                term_index right = structure.right();
 
-                continuation_state continuation = current_frame.continuation;
-                frame_history_index cut_point = current_frame.cut_point;
-
-                auto [lower_bound, upper_bound] =
-                         env.identifier_clause_map[structure.index.raw()];
-
-                // If the clause is not valid, immediately return:
-                if (upper_bound == clause_index{0}) {
-                    if (!backtrack()) return *this;
-                    continue;
-                }
-
-                size_t decision_range = upper_bound.raw() - lower_bound.raw();
-
-                application_result result = application_result::FAILURE;
-                term_index head_index = current_frame.index;
-                size_t decision_index = current_frame.decision_index;
-
-                // // Tail call optimization:
-                // if (decision_range == 1) {
-                //     result = apply_clause_tail(lower_bound, stack_index, current_frame);
-                //
-                //     switch (result) {
-                //         using enum application_result;
-                //         case FACT: unwind();
-                //         case RULE: continue;
-                //         case FAILURE: if (!backtrack()) return *this;
-                //     }
-                //     continue;
-                // }
-
-                for (size_t i = decision_index; i < decision_range; i++) {
-                    clause_index clause_idx = lower_bound + i;
-                    frame_index parent = stack_index;
-
-                    // Attempt clause application:
-                    result = apply_clause(clause_idx, head_index, parent, cut_point, continuation);
-                    if (is_success(result)) {
-                        if (i + 1 < decision_range) {
-                            // If possible, place a decision point:
-                            history.emplace_back(timestamp, stack_index, stack_size, i + 1);
-                        }
-                        break;
-                    }
-                }
-
-                switch (result) {
-                    using enum application_result;
-                    case FACT: unwind(); continue;
-                    case RULE: stack_index = top_index(); continue;
-                    case FAILURE: if (!backtrack()) return *this; continue;
-                }
-            }
-
-            case DISJUNCTION: {
-                // This mirrors RULE closely:
-
-                prolog_struct& structure = env.get_struct(current_frame.index);
-                current_frame.continuation.remains = false;
-                size_t decision_index = current_frame.decision_index;
-
-                if (decision_index + 1 < structure.num_children) {
-                    history.emplace_back(env.get_timestamp(), stack_index, stack.size(), decision_index + 1);
-                }
-
-                add_frame(structure[decision_index], stack_index,
-                    current_frame.cut_point, current_frame.continuation);
-                stack_index = top_index();
-                break;
-            }
-
-
-            case CONJUNCTION: {
-                if (current_frame.continuation.remains) {
-                    int next = current_frame.continuation.next;
-                    prolog_struct& structure = env.get_struct(current_frame.index);
-
-                    ASSERT(current_frame.continuation.next >= 0);
-                    ASSERT(current_frame.continuation.next < static_cast<int>(structure.num_children));
-
-                    current_frame.continuation.next++;
-
-                    if (next + 1 == static_cast<int>(structure.num_children)) {
-                        current_frame.continuation.remains = false;
-                    }
-
-                    add_frame(structure[next], stack_index, current_frame.cut_point, current_frame.continuation);
-
-                    stack_index = top_index();
+                if (env.unify(left, right)) {
+                    env.apply_timestamp(timestamp);
+                    if (!backtrack())
+                        return *this;
                 } else {
                     unwind();
                 }
-                break;
+                continue;
             }
 
-            case CUT: {
-                current_frame.continuation.remains = false;
-                history.erase(history.begin() + static_cast<std::ptrdiff_t>(current_frame.cut_point.raw()), history.end());
+            COMPARISON_CASE("<", left_val < right_val);
+            COMPARISON_CASE(">", left_val > right_val);
+            default:
+
+
+            }
+
+            // Get the current state, in case a decision point needs to be recovered:
+            prolog_timestamp timestamp = env.get_timestamp();
+            size_t stack_size = stack.size();
+
+            continuation_state continuation = current_frame.continuation;
+            frame_history_index cut_point = current_frame.cut_point;
+
+            auto [lower_bound, upper_bound] =
+                env.identifier_clause_map[structure.index.raw()];
+
+            // If the clause is not valid, immediately return:
+            if (upper_bound == clause_index{0}) {
+                if (!backtrack())
+                    return *this;
+                continue;
+            }
+
+            size_t decision_range = upper_bound.raw() - lower_bound.raw();
+
+            application_result result = application_result::FAILURE;
+            term_index head_index = current_frame.index;
+            size_t decision_index = current_frame.decision_index;
+
+            // // Tail call optimization:
+            // if (decision_range == 1) {
+            //     result = apply_clause_tail(lower_bound, stack_index, current_frame);
+            //
+            //     switch (result) {
+            //         using enum application_result;
+            //         case FACT: unwind();
+            //         case RULE: continue;
+            //         case FAILURE: if (!backtrack()) return *this;
+            //     }
+            //     continue;
+            // }
+
+            for (size_t i = decision_index; i < decision_range; i++) {
+                clause_index clause_idx = lower_bound + i;
+                frame_index parent = stack_index;
+
+                // Attempt clause application:
+                result = apply_clause(clause_idx, head_index, parent, cut_point,
+                                      continuation);
+                if (is_success(result)) {
+                    if (i + 1 < decision_range) {
+                        // If possible, place a decision point:
+                        history.emplace_back(timestamp, stack_index, stack_size,
+                                             i + 1);
+                    }
+                    break;
+                }
+            }
+
+            switch (result) {
+                using enum application_result;
+            case FACT:
                 unwind();
-                break;
+                continue;
+            case RULE:
+                stack_index = top_index();
+                continue;
+            case FAILURE:
+                if (!backtrack())
+                    return *this;
+                continue;
+            }
+        }
+
+        case DISJUNCTION: {
+            // This mirrors RULE closely:
+
+            prolog_struct &structure = env.get_struct(current_frame.index);
+            current_frame.continuation.remains = false;
+            size_t decision_index = current_frame.decision_index;
+
+            if (decision_index + 1 < structure.num_children) {
+                history.emplace_back(env.get_timestamp(), stack_index,
+                                     stack.size(),
+                                     decision_index + 1);
             }
 
-            default: {
-                throw std::logic_error{"Not implemented"};
+            add_frame(structure[decision_index], stack_index,
+                      current_frame.cut_point, current_frame.continuation);
+            stack_index = top_index();
+            break;
+        }
+
+        case CONJUNCTION: {
+            if (current_frame.continuation.remains) {
+                int next = current_frame.continuation.next;
+                prolog_struct &structure = env.get_struct(current_frame.index);
+
+                ASSERT(current_frame.continuation.next >= 0);
+                ASSERT(
+                    current_frame.continuation.next < static_cast<int>(structure
+                        .
+                        num_children));
+
+                current_frame.continuation.next++;
+
+                if (next + 1 == static_cast<int>(structure.num_children)) {
+                    current_frame.continuation.remains = false;
+                }
+
+                add_frame(structure[next], stack_index, current_frame.cut_point,
+                          current_frame.continuation);
+
+                stack_index = top_index();
+            } else {
+                unwind();
             }
+            break;
+        }
+
+        case CUT: {
+            current_frame.continuation.remains = false;
+            history.erase(
+                history.begin() + static_cast<std::ptrdiff_t>(current_frame.
+                    cut_point.
+                    raw()),
+                history.end());
+            unwind();
+            break;
+        }
+
+        default: {
+            throw std::logic_error{"Not implemented"};
+        }
         }
     }
     return *this;
 }
 
 void frame_solver::unwind() {
-    while (stack_index != frame_index::invalid() && !stack[stack_index.raw()].continuation.remains) {
+    while (stack_index != frame_index::invalid() && !stack[stack_index.raw()].
+           continuation.remains) {
         stack_index = stack[stack_index.raw()].parent;
     }
 }
@@ -323,7 +353,8 @@ bool frame_solver::backtrack() {
 
 
 bool frame_solver::restore_decision_point() {
-    if (history.empty()) return false;
+    if (history.empty())
+        return false;
     decision_point decision_point = history.back();
     history.pop_back();
 
@@ -332,12 +363,16 @@ bool frame_solver::restore_decision_point() {
 
     env.apply_timestamp(decision_point.timestamp);
     stack_index = decision_point.stack_index;
-    stack.erase(stack.begin() + static_cast<std::ptrdiff_t>(decision_point.stack_size), stack.end());
+    stack.erase(
+        stack.begin() + static_cast<std::ptrdiff_t>(decision_point.stack_size),
+        stack.end());
     stack[stack_index.raw()].decision_index = decision_point.decision_index;
 
     stack[stack_index.raw()].continuation.remains = true;
 
-    for (frame_index i = stack_index; stack[i.raw()].parent != frame_index::invalid(); i = stack[i.raw()].parent) {
+    for (frame_index i = stack_index;
+         stack[i.raw()].parent != frame_index::invalid();
+         i = stack[i.raw()].parent) {
         frame_index p = stack[i.raw()].parent;
         stack[p.raw()].continuation = stack[i.raw()].parent_continuation;
     }
@@ -345,18 +380,21 @@ bool frame_solver::restore_decision_point() {
     return true;
 }
 
-application_result frame_solver::apply_clause(clause_index clause_idx, term_index head_index, frame_index parent,
-    frame_history_index cut_point, continuation_state parent_continuation) {
-
+application_result frame_solver::apply_clause(clause_index clause_idx,
+                                              term_index head_index,
+                                              frame_index parent,
+                                              frame_history_index cut_point,
+                                              continuation_state
+                                              parent_continuation) {
     prolog_timestamp timestamp = env.get_timestamp();
     clause_index duplicate_index = env.duplicate_clause(clause_idx);
-    prolog_clause& duplicate_clause = env.get_clause(duplicate_index);
+    prolog_clause &duplicate_clause = env.get_clause(duplicate_index);
 
     // Now, attempt unification:
     if (env.unify(head_index, duplicate_clause.head)) {
-
         if (duplicate_clause.body != term_index::invalid()) {
-            add_frame(duplicate_clause.body, parent, cut_point, parent_continuation);
+            add_frame(duplicate_clause.body, parent, cut_point,
+                      parent_continuation);
             return application_result::RULE;
         }
         return application_result::FACT;
@@ -366,15 +404,16 @@ application_result frame_solver::apply_clause(clause_index clause_idx, term_inde
     return application_result::FAILURE;
 }
 
-application_result frame_solver::apply_clause_tail(clause_index clause_idx, frame_index stack_index, frame& current_frame) {
+application_result frame_solver::apply_clause_tail(
+    clause_index clause_idx, frame_index stack_index,
+    frame &current_frame) {
     term_index head_idx = stack[stack_index.raw()].index;
 
     prolog_timestamp timestamp = env.get_timestamp();
     clause_index duplicate_index = env.duplicate_clause(clause_idx);
-    prolog_clause& duplicate_clause = env.get_clause(duplicate_index);
+    prolog_clause &duplicate_clause = env.get_clause(duplicate_index);
 
     if (env.unify(head_idx, duplicate_clause.head)) {
-
         if (duplicate_clause.body != term_index::invalid()) {
             current_frame.index = duplicate_clause.body;
             return application_result::RULE;
@@ -389,33 +428,40 @@ application_result frame_solver::apply_clause_tail(clause_index clause_idx, fram
 frame_type identifier_index_to_frame_type(identifier_index i) {
     switch (i.raw()) {
         using enum frame_type;
-        CASE(","): return CONJUNCTION;
-        CASE(";"): return DISJUNCTION;
-        CASE("!"): return CUT;
-        default: return RULE;
+    CASE(","):
+        return CONJUNCTION;
+    CASE(";"):
+        return DISJUNCTION;
+    CASE("!"):
+        return CUT;
+    default:
+        return RULE;
     }
 }
 
 void frame_solver::add_frame(term_index index, frame_index parent,
-    frame_history_index cut_point, continuation_state parent_continuation) {
+                             frame_history_index cut_point,
+                             continuation_state parent_continuation) {
     ASSERT(index.raw() < env.term_vector.size());
-    prolog_term& term = env.term_vector[index.raw()];
+    prolog_term &term = env.term_vector[index.raw()];
     switch (term.type) {
         using enum prolog_term_type;
         using enum frame_type;
-        case STRUCTURE: {
-            prolog_struct& structure = env.get_struct(index);
-            frame_type frame_type_ = identifier_index_to_frame_type(structure.index);
-            if (frame_type_ == RULE) {
-                cut_point = frame_history_index{history.size()};
-            }
-            stack.emplace_back(frame_type_, index, parent, cut_point, parent_continuation);
-            break;
+    case STRUCTURE: {
+        prolog_struct &structure = env.get_struct(index);
+        frame_type frame_type_ =
+            identifier_index_to_frame_type(structure.index);
+        if (frame_type_ == RULE) {
+            cut_point = frame_history_index{history.size()};
         }
+        stack.emplace_back(frame_type_, index, parent, cut_point,
+                           parent_continuation);
+        break;
+    }
 
-        default: {
-            throw std::logic_error{"Error: cannot currently add variable frames"};
-        }
+    default: {
+        throw std::logic_error{"Error: cannot currently add variable frames"};
+    }
     }
 }
 
@@ -467,9 +513,10 @@ void frame_solver::log_frame(frame &frame_) {
 
 void frame_solver::log_frame_stack() {
     std::cout << "STACK: ";
-    if (stack.empty()) std::cout << "EMPTY";
+    if (stack.empty())
+        std::cout << "EMPTY";
     else {
-        for (frame& frame_: stack) {
+        for (frame &frame_ : stack) {
             log_frame(frame_);
         }
     }
@@ -478,10 +525,13 @@ void frame_solver::log_frame_stack() {
 
 void frame_solver::log_history() {
     std::cout << "HISTORY: ";
-    if (history.empty()) std::cout << "EMPTY";
+    if (history.empty())
+        std::cout << "EMPTY";
     else {
-        for (decision_point& dp: history) {
-            std::cout << "[stack_index: " << dp.stack_index << ", decision_index: " << dp.decision_index << ']';
+        for (decision_point &dp : history) {
+            std::cout << "[stack_index: " << dp.stack_index <<
+                ", decision_index: " <<
+                dp.decision_index << ']';
         }
     }
     std::cout << '\n';

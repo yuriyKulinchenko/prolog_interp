@@ -2,15 +2,16 @@
 #include <utility>
 #include "frontend_types.h"
 
-bool is_identifier_token(token& token) {
-    return token.type == token_type::SYMBOL || token.type == token_type::VARIABLE;
+bool is_identifier_token(token &token) {
+    return token.type == token_type::SYMBOL || token.type ==
+           token_type::VARIABLE;
 }
 
-bool is_integral_token(token& token) {
+bool is_integral_token(token &token) {
     return token.type == token_type::INTEGER;
 }
 
-std::ostream& operator<<(std::ostream& stream, token& token) {
+std::ostream &operator<<(std::ostream &stream, token &token) {
     stream << '{' << token_type_to_string(token.type);
     if (is_identifier_token(token)) {
         stream << ", '" << token.identifier() << "'";
@@ -23,7 +24,7 @@ std::ostream& operator<<(std::ostream& stream, token& token) {
 std::string node_type_to_string(node_type type) {
     switch (type) {
 #define X(name) case node_type::name: return #name;
-        NODE_TYPE_LIST(X)
+    NODE_TYPE_LIST(X)
 #undef X
     }
     return "UNKNOWN";
@@ -32,7 +33,7 @@ std::string node_type_to_string(node_type type) {
 std::string token_type_to_string(token_type type) {
     switch (type) {
 #define X(name) case token_type::name: return #name;
-        TOKEN_TYPE_LIST(X)
+    TOKEN_TYPE_LIST(X)
 #undef X
     }
     return "UNKNOWN";
@@ -41,9 +42,12 @@ std::string token_type_to_string(token_type type) {
 std::string node_type_to_short_string(node_type type) {
     switch (type) {
         using enum node_type;
-        case DISJUNCTION: return "OR";
-        case CONJUNCTION: return "AND";
-        default: return node_type_to_string(type);
+    case DISJUNCTION:
+        return "OR";
+    case CONJUNCTION:
+        return "AND";
+    default:
+        return node_type_to_string(type);
 
     }
 }
@@ -70,19 +74,23 @@ text_position::text_position(
     int line_number)
     : line_start_index(line_start_index),
       pointer_index(pointer_index),
-      line_number(line_number) {}
+      line_number(line_number) {
+}
 
 
 // token
 
 token::token(token_type type, text_position position)
-    : type(type), tagged_union(0), position(position) {}
+    : type(type), tagged_union(0), position(position) {
+}
 
 token::token(token_type type, std::string identifier, text_position position)
-    : type(type), tagged_union(std::move(identifier)), position(position) {}
+    : type(type), tagged_union(std::move(identifier)), position(position) {
+}
 
 token::token(token_type type, int integer, text_position position)
-    : type(type), tagged_union(integer), position(position) {}
+    : type(type), tagged_union(integer), position(position) {
+}
 
 
 std::string &token::identifier() {
@@ -96,22 +104,28 @@ int token::integer() {
 // node
 
 node::node()
-    : type(node_type::CUT), tagged_union(0) {}
+    : type(node_type::CUT), tagged_union(0) {
+}
 
 node::node(node_type type)
-    : type(type), tagged_union(0) {}
+    : type(type), tagged_union(0) {
+}
 
 node::node(node_type type, std::string name)
-    : type(type), tagged_union(std::move(name)) {}
+    : type(type), tagged_union(std::move(name)) {
+}
 
 node::node(node_type type, int integer)
-    : type(type), tagged_union(integer) {}
+    : type(type), tagged_union(integer) {
+}
 
 node::node(node_type type, std::vector<node> children)
-    : type(type), tagged_union(0), children(std::move(children)) {}
+    : type(type), tagged_union(0), children(std::move(children)) {
+}
 
 node::node(node_type type, std::string name, std::vector<node> children)
-    : type(type), tagged_union(std::move(name)), children(std::move(children)) {}
+    : type(type), tagged_union(std::move(name)), children(std::move(children)) {
+}
 
 std::string &node::name() {
     return std::get<std::string>(tagged_union);

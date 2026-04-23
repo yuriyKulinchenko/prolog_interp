@@ -29,8 +29,7 @@ if (history.empty()) {                      \
     return *this;                           \
 }                                           \
 continuation = restore_decision_point();    \
-} while(false)                              \
-
+} while(false)
 
 solver &solver::operator++() {
     int continuation = 0;
@@ -41,10 +40,9 @@ solver &solver::operator++() {
     std::cout << '\n';
 #endif
 
-
     // Edge case handling:
     if (goal_stack.empty()) {
-       BACKTRACK();
+        BACKTRACK();
 #ifdef SOLVER_DEBUG
         first_log = false;
 #endif
@@ -61,10 +59,10 @@ solver &solver::operator++() {
         }
 #endif
 
-
         // Identify the goal, and attempt to make progress:
 
-        term_index goal_index = environment.resolve_bound_variable(peek_goal().term_idx);
+        term_index goal_index = environment.resolve_bound_variable(
+            peek_goal().term_idx);
         if (environment.term_vector[goal_index.raw()].is_integer()) {
             // Failure state:
             BACKTRACK();
@@ -75,102 +73,127 @@ solver &solver::operator++() {
         // Check for special cases:
 
         switch (id.raw()) {
-            case unification_environment::get_reserved_identifier_index(",").raw(): {
+        case unification_environment::get_reserved_identifier_index(",").raw()
+        : {
+            goal_stack.pop_back();
+            prolog_struct &conjunction_structure = environment.get_struct(
+                goal_index);
+            size_t num_children = conjunction_structure.num_children;
+            for (int i = static_cast<int>(num_children) - 1; i >= 0; i--) {
+                goal_stack.emplace_back(
+                    conjunction_structure[static_cast<size_t>(i)],
+                    peek_goal().cut_barrier);
+            }
+            continue;
+        }
+
+        case unification_environment::get_reserved_identifier_index(";").raw()
+        : {
+            // Decision points must be placed:
+            size_t num_children = environment.get_struct(goal_index).
+                                              num_children;
+
+            // decision point can be placed:
+            if (continuation < static_cast<int>(num_children) - 1) {
+                // Create copy of goal_stack:
+                auto goal_stack_copy{goal_stack};
+                history.emplace_back(get_timestamp(), goal_stack_copy,
+                                     continuation + 1);
+            }
+
+            // Add the relevant child:
+            int cut_barrier = peek_goal().cut_barrier;
+            goal_stack.pop_back();
+            goal_stack.emplace_back(
+                environment.get_struct(goal_index)[static_cast<size_t>(
+                    continuation)],
+                cut_barrier);
+
+            continuation = 0;
+            continue;
+        }
+
+        case unification_environment::get_reserved_identifier_index("!").raw()
+        : {
+            // Remove the cut, adjust the history:
+            int i = peek_goal().cut_barrier;
+            goal_stack.pop_back();
+            history.erase(history.begin() + i, history.end());
+            continue;
+        }
+
+        case unification_environment::get_reserved_identifier_index("=").raw()
+        : {
+            term_index left = environment.get_struct(goal_index)[0];
+            term_index right = environment.get_struct(goal_index)[1];
+            bool success = environment.unify(left, right);
+            if (success) {
                 goal_stack.pop_back();
-                prolog_struct& conjunction_structure = environment.get_struct(goal_index);
-                size_t num_children = conjunction_structure.num_children;
-                for (int i = static_cast<int>(num_children) - 1; i >= 0; i--) {
-                    goal_stack.emplace_back(conjunction_structure[static_cast<size_t>(i)], peek_goal().cut_barrier);
-                }
-                continue;
-            }
-
-            case unification_environment::get_reserved_identifier_index(";").raw(): {
-                // Decision points must be placed:
-                size_t num_children = environment.get_struct(goal_index).num_children;
-
-                // decision point can be placed:
-                if (continuation < static_cast<int>(num_children) - 1) {
-                    // Create copy of goal_stack:
-                    auto goal_stack_copy {goal_stack};
-                    history.emplace_back(get_timestamp(), goal_stack_copy, continuation + 1);
-                }
-
-                // Add the relevant child:
-                int cut_barrier = peek_goal().cut_barrier;
-                goal_stack.pop_back();
-                goal_stack.emplace_back(environment.get_struct(goal_index)[static_cast<size_t>(continuation)], cut_barrier);
-
-                continuation = 0;
-                continue;
-            }
-
-            case unification_environment::get_reserved_identifier_index("!").raw(): {
-                // Remove the cut, adjust the history:
-                int i = peek_goal().cut_barrier;
-                goal_stack.pop_back();
-                history.erase(history.begin() + i, history.end());
-                continue;
-            }
-
-            case unification_environment::get_reserved_identifier_index("=").raw(): {
-                term_index left = environment.get_struct(goal_index)[0];
-                term_index right = environment.get_struct(goal_index)[1];
-                bool success = environment.unify(left, right);
-                if (success) {
-                    goal_stack.pop_back();
-                } else {
-                    BACKTRACK();
-                }
-                continue;
-            }
-
-            case unification_environment::get_reserved_identifier_index("is").raw(): {
-                term_index left = environment.get_struct(goal_index)[0];
-                term_index right = environment.evaluate_and_create_arithmetic_term(environment.get_struct(goal_index)[1]);
-                bool success = environment.unify(left, right);
-                if (success) {
-                    goal_stack.pop_back();
-                } else {
-                    BACKTRACK();
-                }
-                continue;
-            }
-
-            case unification_environment::get_reserved_identifier_index("<").raw(): {
-                int left = environment.evaluate_arithmetic_term(environment.get_struct(goal_index)[0]);
-                int right = environment.evaluate_arithmetic_term(environment.get_struct(goal_index)[1]);
-                bool success = left < right;
-                if (success) {
-                    goal_stack.pop_back();
-                } else {
-                    BACKTRACK();
-                }
-                continue;
-            }
-
-            case unification_environment::get_reserved_identifier_index(">").raw(): {
-                int left = environment.evaluate_arithmetic_term(environment.get_struct(goal_index)[0]);
-                int right = environment.evaluate_arithmetic_term(environment.get_struct(goal_index)[1]);
-                bool success = left > right;
-                if (success) {
-                    goal_stack.pop_back();
-                } else {
-                    BACKTRACK();
-                }
-                continue;
-            }
-
-            case unification_environment::get_reserved_identifier_index("fail").raw(): {
+            } else {
                 BACKTRACK();
-                continue;
             }
+            continue;
+        }
 
-            case unification_environment::get_reserved_identifier_index("halt").raw(): {
-                throw std::logic_error("EXECUTION HALTED");
+        case unification_environment::get_reserved_identifier_index("is").raw()
+        : {
+            term_index left = environment.get_struct(goal_index)[0];
+            term_index right = environment.evaluate_and_create_arithmetic_term(
+                environment.get_struct(goal_index)[1]);
+            bool success = environment.unify(left, right);
+            if (success) {
+                goal_stack.pop_back();
+            } else {
+                BACKTRACK();
             }
+            continue;
 
-            default:
+        }
+
+        case unification_environment::get_reserved_identifier_index("<").raw()
+        : {
+            int left = environment.evaluate_arithmetic_term(
+                environment.get_struct(goal_index)[0]);
+            int right = environment.evaluate_arithmetic_term(
+                environment.get_struct(goal_index)[1]);
+            bool success = left < right;
+            if (success) {
+                goal_stack.pop_back();
+            } else {
+                BACKTRACK();
+            }
+            continue;
+        }
+
+        case unification_environment::get_reserved_identifier_index(">").raw()
+        : {
+            int left = environment.evaluate_arithmetic_term(
+                environment.get_struct(goal_index)[0]);
+            int right = environment.evaluate_arithmetic_term(
+                environment.get_struct(goal_index)[1]);
+            bool success = left > right;
+            if (success) {
+                goal_stack.pop_back();
+            } else {
+                BACKTRACK();
+            }
+            continue;
+        }
+
+        case unification_environment::get_reserved_identifier_index("fail").
+        raw(): {
+            BACKTRACK();
+            continue;
+        }
+
+        case unification_environment::get_reserved_identifier_index("halt").
+        raw(): {
+            throw std::logic_error("EXECUTION HALTED");
+        }
+
+        default:
+
+
         }
 
         auto clause_range = environment.identifier_clause_map[id.raw()];
@@ -181,15 +204,18 @@ solver &solver::operator++() {
 
         clause_index lower_bound = clause_range.first;
         clause_index upper_bound = clause_range.second;
-        int choice_count = static_cast<int>(upper_bound.raw() - lower_bound.raw());
-
+        int choice_count = static_cast<int>(
+            upper_bound.raw() - lower_bound.raw());
 
         bool progress_made = false;
-        for (int choice = continuation; choice < choice_count && !progress_made; choice++) {
+        for (int choice = continuation; choice < choice_count && !progress_made;
+             choice++) {
             // Attempt each clause:
             bool add_decision_point = choice < choice_count - 1;
-            bool success = apply_clause(lower_bound, choice, add_decision_point);
-            if (success) progress_made = true;
+            bool success =
+                apply_clause(lower_bound, choice, add_decision_point);
+            if (success)
+                progress_made = true;
         }
 
         if (progress_made) {
@@ -231,13 +257,14 @@ solver::decision_point solver::pop_history() {
     return return_point;
 }
 
-bool solver::apply_clause(clause_index clause_idx, int choice_number, bool add_decision_point) {
+bool solver::apply_clause(clause_index clause_idx, int choice_number,
+                          bool add_decision_point) {
     clause_index final_idx = clause_idx + static_cast<size_t>(choice_number);
     prolog_timestamp timestamp = get_timestamp();
     goal goal_instance = pop_goal();
 
     clause_index dup_idx = environment.duplicate_clause(final_idx);
-    prolog_clause& duplicate_clause = environment.get_clause(dup_idx);
+    prolog_clause &duplicate_clause = environment.get_clause(dup_idx);
 
     if (!environment.unify(goal_instance.term_idx, duplicate_clause.head)) {
         apply_timestamp(timestamp);
@@ -251,20 +278,24 @@ bool solver::apply_clause(clause_index clause_idx, int choice_number, bool add_d
         history.emplace_back(timestamp, saved_stack, choice_number + 1);
     }
 
-    if (duplicate_clause.body == term_index::invalid()) return true;
+    if (duplicate_clause.body == term_index::invalid())
+        return true;
 
-    prolog_term& body = environment.term_vector[duplicate_clause.body.raw()];
+    prolog_term &body = environment.term_vector[duplicate_clause.body.raw()];
 
     if (body.is_structure() &&
-        body.structure().index == unification_environment::get_reserved_identifier_index(",")) {
-        prolog_struct& conjunction = body.structure();
+        body.structure().index ==
+        unification_environment::get_reserved_identifier_index(",")) {
+        prolog_struct &conjunction = body.structure();
         size_t num_children = conjunction.num_children;
         for (int i = static_cast<int>(num_children) - 1; i >= 0; --i) {
-            goal_stack.emplace_back(conjunction[static_cast<size_t>(i)], goal_instance.cut_barrier);
+            goal_stack.emplace_back(conjunction[static_cast<size_t>(i)],
+                                    goal_instance.cut_barrier);
         }
-        } else {
-            goal_stack.emplace_back(duplicate_clause.body, goal_instance.cut_barrier);
-        }
+    } else {
+        goal_stack.emplace_back(duplicate_clause.body,
+                                goal_instance.cut_barrier);
+    }
 
     return true;
 }

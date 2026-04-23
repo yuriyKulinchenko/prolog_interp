@@ -13,18 +13,25 @@ public:
     using frame = frame_solver_types::frame;
     using decision_point = frame_solver_types::decision_point;
 
-    explicit frame_solver(unification_environment& environment):
-    env(environment), found_all(false) {}
+    explicit frame_solver(unification_environment &environment):
+        env(environment), found_all(false) {
+    }
+
     void solve(term_index goal_index);
-    frame_solver& operator++();
+    frame_solver &operator++();
     bool operator*() const;
 
     void step();
 
-    application_result apply_clause(clause_index clause_idx, term_index head_index,
-        frame_index parent, frame_history_index cut_point, continuation_state parent_continuation);
+    application_result apply_clause(clause_index clause_idx,
+                                    term_index head_index,
+                                    frame_index parent,
+                                    frame_history_index cut_point,
+                                    continuation_state parent_continuation);
 
-    application_result apply_clause_tail(clause_index clause_idx, frame_index stack_index, frame& current_frame);
+    application_result apply_clause_tail(clause_index clause_idx,
+                                         frame_index stack_index,
+                                         frame &current_frame);
 
     void unwind();
     bool backtrack();
@@ -34,16 +41,22 @@ public:
     [[nodiscard]] bool at_end() const;
 
 private:
-    void add_frame(term_index index, frame_index parent = frame_index::invalid(), frame_history_index cut_point = frame_history_index::invalid(), continuation_state parent_continuation = {});
+    void add_frame(term_index index,
+                   frame_index parent = frame_index::invalid(),
+                   frame_history_index cut_point =
+                       frame_history_index::invalid(),
+                   continuation_state parent_continuation = {});
+
     bool restore_decision_point();
     frame_index top_index();
-    void log_frame(frame& frame_);
+    void log_frame(frame &frame_);
 
-    bool handle_rule(frame& current_frame);
-    bool handle_conjunction(frame& current_frame);
-    bool handle_disjunction(frame& current_frame);
+    bool handle_rule(frame &current_frame);
+    bool handle_conjunction(frame &current_frame);
+    bool handle_disjunction(frame &current_frame);
 
-    unification_environment& env;
+
+    unification_environment &env;
     std::vector<decision_point> history;
     std::vector<frame> stack;
     bool found_all;
@@ -51,7 +64,6 @@ private:
     frame_index stack_index{0};
     bool solved = false;
 };
-
 
 
 #endif //FRAME_SOLVER_H
