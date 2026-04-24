@@ -36,6 +36,9 @@ public:
     void unwind();
     bool backtrack();
 
+    std::vector<decision_point>& get_history();
+    std::vector<frame>& get_stack();
+
     void log_frame_stack();
     void log_history();
     [[nodiscard]] bool at_end() const;

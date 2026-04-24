@@ -43,112 +43,114 @@ A decision point is uniquely identified by:
 
 class unification_environment {
 public:
-  // Adds the term specified by the passed node to the term_vector
-  // Returns a pair specifying if the term is a raw term or variable, and the corresponding index
+    // Adds the term specified by the passed node to the term_vector
+    // Returns a pair specifying if the term is a raw term or variable, and the corresponding index
 
-  friend class solver;
-  friend class frame_solver;
-  unification_environment();
+    friend class solver;
+    friend class frame_solver;
+    unification_environment();
 
-  term_index add_node(node &node);
-  clause_index add_clause(node &node);
-  void add_clauses(std::vector<node> &nodes);
+    term_index add_node(node& node);
+    clause_index add_clause(node& node);
+    void add_clauses(std::vector<node>& nodes);
 
-  void test_unification();
-  void test_clauses(const std::string &path);
-  void test_duplication(const std::string &path);
-  void run_interpreter();
+    void test_unification();
+    void test_clauses(const std::string& path);
+    void test_duplication(const std::string& path);
+    void run_interpreter();
 
-  static consteval identifier_index get_reserved_identifier_index(
-      std::string_view s) {
-    for (size_t i = 0; i < reserved_identifiers.size(); i++) {
-      if (reserved_identifiers[i] == s) {
-        return identifier_index{i};
-      }
+    std::vector<term_index>& get_trail();
+
+    static consteval identifier_index get_reserved_identifier_index(
+        std::string_view s) {
+        for (size_t i = 0; i < reserved_identifiers.size(); i++) {
+            if (reserved_identifiers[i] == s) {
+                return identifier_index{i};
+            }
+        }
+        return identifier_index::invalid();
     }
-    return identifier_index::invalid();
-  }
 
 private:
-  template <prolog_term_type type>
-  void validate_type(term_index index);
-  prolog_term &get_term(term_index index);
-  prolog_struct &get_struct(term_index index);
-  prolog_var &get_var(term_index index);
-  prolog_clause &get_clause(clause_index index);
-  int get_integer(term_index index);
+    template <prolog_term_type type>
+    void validate_type(term_index index);
+    prolog_term& get_term(term_index index);
+    prolog_struct& get_struct(term_index index);
+    prolog_var& get_var(term_index index);
+    prolog_clause& get_clause(clause_index index);
+    int get_integer(term_index index);
 
-  term_index add_structure(node &node_instance);
-  term_index add_integer(int integer);
-  term_index add_variable(std::string &variable_name);
-  identifier_index add_identifier(const std::string &name);
+    term_index add_structure(node& node_instance);
+    term_index add_integer(int integer);
+    term_index add_variable(std::string& variable_name);
+    identifier_index add_identifier(const std::string& name);
 
-  clause_index duplicate_clause(clause_index index);
-  term_index duplicate_term(term_index index,
-                            std::unordered_map<term_index, term_index> &
-                            variable_map);
-  term_index duplicate_structure(term_index index,
-                                 std::unordered_map<term_index, term_index> &
-                                 variable_map);
-  term_index duplicate_variable(term_index index,
-                                std::unordered_map<term_index, term_index> &
-                                variable_map);
+    clause_index duplicate_clause(clause_index index);
+    term_index duplicate_term(term_index index,
+                              std::unordered_map<term_index, term_index>&
+                              variable_map);
+    term_index duplicate_structure(term_index index,
+                                   std::unordered_map<term_index, term_index>&
+                                   variable_map);
+    term_index duplicate_variable(term_index index,
+                                  std::unordered_map<term_index, term_index>&
+                                  variable_map);
 
-  bool unify(term_index i, term_index j);
-  bool unify_ground(term_index i, term_index j);
-  void unify_unbound_variables(term_index i, term_index j);
-  void unify_unbound_variable_ground(term_index i, term_index j);
-  term_index resolve_bound_variable(term_index variable_index);
+    bool unify(term_index i, term_index j);
+    bool unify_ground(term_index i, term_index j);
+    void unify_unbound_variables(term_index i, term_index j);
+    void unify_unbound_variable_ground(term_index i, term_index j);
+    term_index resolve_bound_variable(term_index variable_index);
 
-  void unwind_term_vector(term_index i);
-  void unwind_clause_vector(clause_index i);
-  void unwind_trail(trail_index i);
+    void unwind_term_vector(term_index i);
+    void unwind_clause_vector(clause_index i);
+    void unwind_trail(trail_index i);
 
-  void log_variables();
-  void log_clauses();
+    void log_variables();
+    void log_clauses();
 
-  void log_term(term_index i, int depth = max_logging_depth);
-  void log_bracketed_term(term_index i, int depth = max_logging_depth);
-  void log_structure(term_index structure_index, int depth);
-  void log_variable(term_index variable_index);
+    void log_term(term_index i, int depth = max_logging_depth);
+    void log_bracketed_term(term_index i, int depth = max_logging_depth);
+    void log_structure(term_index structure_index, int depth);
+    void log_variable(term_index variable_index);
 
-  void log_list(term_index list_index, int depth);
-  void log_clause(clause_index idx, int depth = max_logging_depth);
-  void log_compound_term(term_index i, int depth, char seperator);
-  void log_infix_term(term_index i, int depth,
-                      const std::string &infix_operator);
+    void log_list(term_index list_index, int depth);
+    void log_clause(clause_index idx, int depth = max_logging_depth);
+    void log_compound_term(term_index i, int depth, char seperator);
+    void log_infix_term(term_index i, int depth,
+                        const std::string& infix_operator);
 
 
-  [[nodiscard]] bool is_compound_term(term_index i);
-  [[nodiscard]] bool is_infix_term(term_index i);
+    [[nodiscard]] bool is_compound_term(term_index i);
+    [[nodiscard]] bool is_infix_term(term_index i);
 
-  term_index evaluate_and_create_arithmetic_term(term_index i);
-  int evaluate_arithmetic_term(term_index i);
+    term_index evaluate_and_create_arithmetic_term(term_index i);
+    int evaluate_arithmetic_term(term_index i);
 
-  prolog_timestamp get_timestamp();
-  void apply_timestamp(prolog_timestamp timestamp);
+    prolog_timestamp get_timestamp();
+    void apply_timestamp(prolog_timestamp timestamp);
 
-  std::vector<prolog_term> term_vector;
-  std::vector<std::string> identifier_vector;
-  std::vector<prolog_clause> clause_vector;
-  std::vector<std::pair<clause_index, clause_index>> identifier_clause_map;
-  // Maps identifier index to start of clause
+    std::vector<prolog_term> term_vector;
+    std::vector<std::string> identifier_vector;
+    std::vector<prolog_clause> clause_vector;
+    std::vector<std::pair<clause_index, clause_index>> identifier_clause_map;
+    // Maps identifier index to start of clause
 
-  std::unordered_map<std::string, term_index> name_variable_map;
-  std::unordered_map<term_index, std::string> variable_name_map;
-  std::unordered_map<std::string, identifier_index> identifier_map;
+    std::unordered_map<std::string, term_index> name_variable_map;
+    std::unordered_map<term_index, std::string> variable_name_map;
+    std::unordered_map<std::string, identifier_index> identifier_map;
 
-  static constexpr int max_logging_depth = 20;
+    static constexpr int max_logging_depth = 20;
 
-  static constexpr std::array<std::string_view, 16> reserved_identifiers{
-      ",", ";", "!", ".", "[]",
-      "+", "-", "*", "/", "is",
-      "=", "\\=", "\\+", "<", ">",
-      "halt"
-  };
+    static constexpr std::array<std::string_view, 16> reserved_identifiers{
+        ",", ";", "!", ".", "[]",
+        "+", "-", "*", "/", "is",
+        "=", "\\=", "\\+", "<", ">",
+        "halt"
+    };
 
-  // For the operation of the interpreter:
-  std::vector<term_index> trail;
+    // For the operation of the interpreter:
+    std::vector<term_index> trail;
 };
 
 

@@ -94,7 +94,7 @@ void frame_solver::solve(term_index goal_index) {
 }
 
 #ifdef FRAME_SOLVER_DEBUG
-#define PRINT_TRACE()\
+#define PRINT_TRACE()   \
 do {                    \
     log_frame_stack();  \
     log_history();      \
@@ -316,27 +316,23 @@ bool frame_solver::handle_rule(frame& current_frame) {
 }
 
 void frame_solver::handle_conjunction(frame& current_frame) {
-    if (current_frame.continuation.remains) {
-        int next = current_frame.continuation.next;
-        prolog_struct& structure = env.get_struct(current_frame.index);
+    int next = current_frame.continuation.next;
+    prolog_struct& structure = env.get_struct(current_frame.index);
 
-        ASSERT(current_frame.continuation.next >= 0);
-        ASSERT(current_frame.continuation.next <
-            static_cast<int>(structure.num_children));
+    ASSERT(current_frame.continuation.next >= 0);
+    ASSERT(current_frame.continuation.next <
+        static_cast<int>(structure.num_children));
 
-        current_frame.continuation.next++;
+    current_frame.continuation.next++;
 
-        if (next + 1 == static_cast<int>(structure.num_children)) {
-            current_frame.continuation.remains = false;
-        }
-
-        add_frame(structure[next], stack_index, current_frame.cut_point,
-                  current_frame.continuation);
-
-        stack_index = top_index();
-    } else {
-        unwind();
+    if (next + 1 == static_cast<int>(structure.num_children)) {
+        current_frame.continuation.remains = false;
     }
+
+    add_frame(structure[next], stack_index, current_frame.cut_point,
+              current_frame.continuation);
+
+    stack_index = top_index();
 }
 
 void frame_solver::handle_disjunction(frame& current_frame) {
@@ -365,9 +361,8 @@ void frame_solver::handle_cut(frame& current_frame) {
 }
 
 void frame_solver::unwind() {
-    while (stack_index != frame_index::invalid() && !stack[stack_index.
-               raw()].
-           continuation.remains) {
+    while (stack_index != frame_index::invalid() &&
+           !stack[stack_index.raw()].continuation.remains) {
         stack_index = stack[stack_index.raw()].parent;
     }
 }
@@ -574,4 +569,12 @@ bool frame_solver::operator*() const {
 
 bool frame_solver::at_end() const {
     return found_all;
+}
+
+std::vector<decision_point>& frame_solver::get_history() {
+    return history;
+}
+
+std::vector<frame>& frame_solver::get_stack() {
+    return stack;
 }

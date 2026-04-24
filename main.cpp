@@ -14,7 +14,7 @@ int main() {
     environment.add_clauses(clauses);
     try {
         environment.run_interpreter();
-    } catch (std::logic_error &e) {
+    } catch (std::logic_error& e) {
         if (std::string(e.what()) == "EXECUTION HALTED") {
             std::println("Execution halted");
             return 0;
