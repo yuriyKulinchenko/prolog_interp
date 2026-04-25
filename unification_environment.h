@@ -143,11 +143,11 @@ private:
 
     static constexpr int max_logging_depth = 20;
 
-    static constexpr std::array<std::string_view, 16> reserved_identifiers{
+    static constexpr std::array<std::string_view, 18> reserved_identifiers{
         ",", ";", "!", ".", "[]",
         "+", "-", "*", "/", "is",
         "=", "\\=", "\\+", "<", ">",
-        "halt"
+        "=<", ">=", "halt"
     };
 
     // For the operation of the interpreter:

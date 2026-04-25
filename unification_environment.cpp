@@ -610,6 +610,8 @@ void unification_environment::log_structure(term_index structure_index,
     INFIX_CASE_STATEMENT("=");
     INFIX_CASE_STATEMENT("<");
     INFIX_CASE_STATEMENT(">");
+    INFIX_CASE_STATEMENT(">=");
+    INFIX_CASE_STATEMENT("=<");
     INFIX_CASE_STATEMENT("is");
     default:
 

@@ -246,6 +246,9 @@ bool frame_solver::handle_rule(frame& current_frame) {
 
     COMPARISON_CASE("<", left_val < right_val);
     COMPARISON_CASE(">", left_val > right_val);
+    COMPARISON_CASE("=<", left_val <= right_val);
+    COMPARISON_CASE(">=", left_val >= right_val);
+
     default:
 
         // Get the current state, in case a decision point needs to be recovered:

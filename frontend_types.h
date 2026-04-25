@@ -30,7 +30,9 @@ X(NOT_EQUAL)           \
 X(IS)                  \
 X(INTEGER)             \
 X(LESS_THAN)           \
-X(MORE_THAN)
+X(MORE_THAN)           \
+X(LESS_THAN_EQUAL)     \
+X(MORE_THAN_EQUAL)
 
 #define NODE_TYPE_LIST(X) \
 X(CLAUSE)              \
@@ -65,7 +67,7 @@ struct token {
     token(token_type type, std::string identifier, text_position position);
     token(token_type type, int integer, text_position position);
 
-    std::string &identifier();
+    std::string& identifier();
     int integer();
 
     token_type type;
@@ -89,7 +91,7 @@ struct node {
     node(node_type type, std::vector<node> children);
     node(node_type type, std::string name, std::vector<node> children);
 
-    std::string &name();
+    std::string& name();
     int integer();
 
     node_type type;
@@ -99,8 +101,8 @@ struct node {
 
 // HELPER FUNCTIONS:
 
-std::ostream &operator<<(std::ostream &stream, token &token);
-bool is_identifier_token(token &token);
+std::ostream& operator<<(std::ostream& stream, token& token);
+bool is_identifier_token(token& token);
 
 std::string node_type_to_string(node_type type);
 std::string node_type_to_short_string(node_type type);

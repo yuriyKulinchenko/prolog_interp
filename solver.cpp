@@ -5,6 +5,7 @@
 #include "solver.h"
 #include "iostream"
 
+[[deprecated]]
 void solver::solve(term_index goal_index) {
     found_all = false;
     goal_stack.clear();
@@ -12,6 +13,7 @@ void solver::solve(term_index goal_index) {
     goal_stack.emplace_back(goal_index, 0);
 }
 
+[[deprecated]]
 void solver::log_state(int continuation) {
     std::cout << "Continuation: " << continuation << '\n';
     std::cout << "Goals: ";
@@ -31,7 +33,9 @@ if (history.empty()) {                      \
 continuation = restore_decision_point();    \
 } while(false)
 
-solver &solver::operator++() {
+
+[[deprecated]]
+solver& solver::operator++() {
     int continuation = 0;
 
 #ifdef SOLVER_DEBUG
@@ -76,7 +80,7 @@ solver &solver::operator++() {
         case unification_environment::get_reserved_identifier_index(",").raw()
         : {
             goal_stack.pop_back();
-            prolog_struct &conjunction_structure = environment.get_struct(
+            prolog_struct& conjunction_structure = environment.get_struct(
                 goal_index);
             size_t num_children = conjunction_structure.num_children;
             for (int i = static_cast<int>(num_children) - 1; i >= 0; i--) {
@@ -232,31 +236,37 @@ solver &solver::operator++() {
 
 #undef BACKTRACK
 
+[[deprecated]]
 bool solver::operator*() {
     return goal_stack.empty();
 }
 
+[[deprecated]]
 bool solver::at_end() const {
     return found_all;
 }
 
+
+[[deprecated]]
 solver::goal solver::pop_goal() {
     goal return_index = goal_stack[goal_stack.size() - 1];
     goal_stack.pop_back();
     return return_index;
 }
 
+[[deprecated]]
 solver::goal solver::peek_goal() {
     return goal_stack[goal_stack.size() - 1];
 }
 
-
+[[deprecated]]
 solver::decision_point solver::pop_history() {
     decision_point return_point = history[history.size() - 1];
     history.pop_back();
     return return_point;
 }
 
+[[deprecated]]
 bool solver::apply_clause(clause_index clause_idx, int choice_number,
                           bool add_decision_point) {
     clause_index final_idx = clause_idx + static_cast<size_t>(choice_number);
@@ -264,7 +274,7 @@ bool solver::apply_clause(clause_index clause_idx, int choice_number,
     goal goal_instance = pop_goal();
 
     clause_index dup_idx = environment.duplicate_clause(final_idx);
-    prolog_clause &duplicate_clause = environment.get_clause(dup_idx);
+    prolog_clause& duplicate_clause = environment.get_clause(dup_idx);
 
     if (!environment.unify(goal_instance.term_idx, duplicate_clause.head)) {
         apply_timestamp(timestamp);
@@ -281,12 +291,12 @@ bool solver::apply_clause(clause_index clause_idx, int choice_number,
     if (duplicate_clause.body == term_index::invalid())
         return true;
 
-    prolog_term &body = environment.term_vector[duplicate_clause.body.raw()];
+    prolog_term& body = environment.term_vector[duplicate_clause.body.raw()];
 
     if (body.is_structure() &&
         body.structure().index ==
         unification_environment::get_reserved_identifier_index(",")) {
-        prolog_struct &conjunction = body.structure();
+        prolog_struct& conjunction = body.structure();
         size_t num_children = conjunction.num_children;
         for (int i = static_cast<int>(num_children) - 1; i >= 0; --i) {
             goal_stack.emplace_back(conjunction[static_cast<size_t>(i)],
@@ -300,6 +310,7 @@ bool solver::apply_clause(clause_index clause_idx, int choice_number,
     return true;
 }
 
+[[deprecated]]
 int solver::restore_decision_point() {
     decision_point point = pop_history();
     apply_timestamp(point.timestamp);
@@ -307,6 +318,7 @@ int solver::restore_decision_point() {
     return point.next_choice_number;
 }
 
+[[deprecated]]
 prolog_timestamp solver::get_timestamp() {
     return {
         term_index{environment.term_vector.size()},
@@ -315,19 +327,21 @@ prolog_timestamp solver::get_timestamp() {
     };
 }
 
+[[deprecated]]
 void solver::apply_timestamp(prolog_timestamp timestamp) {
     environment.unwind_term_vector(timestamp.term_index_);
     environment.unwind_clause_vector(timestamp.clause_index_);
     environment.unwind_trail(timestamp.trail_index_);
 }
 
+[[deprecated]]
 void solver::log_goal(goal goal_instance) {
     // std::cout << '{';
     environment.log_term(goal_instance.term_idx);
     // << ", " << goal_instance.cut_barrier << '}';
 }
 
-
+[[deprecated]]
 void solver::log_goal_stack(std::vector<goal> goal_stack_instance) {
     std::cout << '[';
     if (!goal_stack_instance.empty()) {
@@ -340,14 +354,15 @@ void solver::log_goal_stack(std::vector<goal> goal_stack_instance) {
     std::cout << ']';
 }
 
-void solver::log_decision_point(decision_point &point) {
+[[deprecated]]
+void solver::log_decision_point(decision_point& point) {
     std::cout << '{';
     log_goal_stack(point.goal_stack);
     std::cout << ", next_choice=" << point.next_choice_number;
     std::cout << '}';
 }
 
-
+[[deprecated]]
 void solver::log_history() {
     std::cout << '[';
     if (!history.empty()) {

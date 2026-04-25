@@ -5,6 +5,8 @@
 #include "solver.h"
 #include "unification_environment.h"
 
+#include <filesystem>
+
 int main() {
     unification_environment environment{};
     lexer lexer(read_file("../examples/source.txt"));

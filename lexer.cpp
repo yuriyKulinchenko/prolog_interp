@@ -95,7 +95,10 @@ std::vector<token> lexer::run() {
         }
 
         case '=': {
-            emit_token(EQUAL);
+            if (match('<'))
+                emit_token(LESS_THAN_EQUAL);
+            else
+                emit_token(EQUAL);
             break;
         }
 
@@ -105,7 +108,10 @@ std::vector<token> lexer::run() {
         }
 
         case '>': {
-            emit_token(MORE_THAN);
+            if (match('='))
+                emit_token(MORE_THAN_EQUAL);
+            else
+                emit_token(MORE_THAN);
             break;
         }
 
@@ -149,7 +155,7 @@ std::vector<token> lexer::run() {
     return token_vector;
 }
 
-void lexer::reset(std::string &&source_code) {
+void lexer::reset(std::string&& source_code) {
     source_code = std::move(source_code);
     token_vector.clear();
     i = 0;
@@ -188,7 +194,7 @@ bool lexer::match(char c) {
     return false;
 }
 
-char lexer::consume(char c, const std::string &error_message) {
+char lexer::consume(char c, const std::string& error_message) {
     if (!match(c))
         throw lexer_error(error_message);
     return c;
@@ -222,7 +228,7 @@ bool lexer::at_end() {
     return source_code.length() == i;
 }
 
-void lexer::emit_token(token_type type, const std::string &identifier) {
+void lexer::emit_token(token_type type, const std::string& identifier) {
     token_vector.emplace_back(type, identifier, get_text_position());
 }
 
@@ -271,7 +277,7 @@ void lexer::emit_integer() {
     emit_token(token_type::INTEGER, integer);
 }
 
-std::logic_error lexer::lexer_error(const std::string &error_message) {
+std::logic_error lexer::lexer_error(const std::string& error_message) {
     std::string current_line{fetch_current_line()};
 
     std::string position_error = generate_position_error_string(
