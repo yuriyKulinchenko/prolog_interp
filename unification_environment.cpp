@@ -189,8 +189,13 @@ term_index unification_environment::duplicate_variable(
         return variable_map[index];
 
     // If mapping does not exist:
+
     term_index duplicated_variable_index{term_vector.size()};
-    term_vector.emplace_back(prolog_term_type::VARIABLE);
+    prolog_var& original_variable = term_vector[index.raw()].variable();
+
+    prolog_var duplicated_variable{original_variable.identifier};
+    term_vector.emplace_back(duplicated_variable);
+
     variable_map[index] = duplicated_variable_index;
     return duplicated_variable_index;
 }
@@ -231,9 +236,8 @@ void unification_environment::add_clauses(std::vector<node>& nodes) {
 
     // close final range
     if (current_id != identifier_index::invalid()) {
-        identifier_clause_map[current_id.raw()] = {start_index,
-                                                   clause_index{
-                                                       clause_vector.size()}};
+        identifier_clause_map[current_id.raw()] =
+            {start_index, clause_index{clause_vector.size()}};
     }
 }
 
@@ -283,12 +287,17 @@ term_index unification_environment::add_structure(node& node_instance) {
 
 term_index unification_environment::add_variable(std::string& variable_name) {
 
+    // Variable names are also added to the identifier index:
+    identifier_index variable_name_index = add_identifier(variable_name);
+
     if (name_variable_map.contains(variable_name) && variable_name != "_") {
         return name_variable_map[variable_name];
     }
     // Otherwise, this name is not yet mapped, or is anonymous:
     term_index variable_index{term_vector.size()};
-    term_vector.emplace_back(prolog_term_type::VARIABLE);
+
+    prolog_var variable{variable_name_index};
+    term_vector.emplace_back(variable);
 
     if (variable_name != "_") {
         name_variable_map[variable_name] = variable_index;
@@ -405,14 +414,18 @@ void unification_environment::unify_unbound_variables(
     // If the variables are the same, do nothing:
     if (i == j)
         return;
-    term_vector[i.raw()].variable() = {prolog_var_type::BOUND, j};
+    prolog_var& variable = term_vector[i.raw()].variable();
+    variable.type = prolog_var_type::BOUND;
+    variable.index = j;
     trail.push_back(i);
 }
 
 // unify_unbound_variable_term(i, j) binds i to the term j
 void unification_environment::unify_unbound_variable_ground(
     term_index i, term_index j) {
-    term_vector[i.raw()].variable() = {prolog_var_type::BOUND, j};
+    prolog_var& variable = term_vector[i.raw()].variable();
+    variable.type = prolog_var_type::BOUND;
+    variable.index = j;
     trail.push_back(i);
 }
 
@@ -668,11 +681,15 @@ void unification_environment::log_list(term_index list_index, int depth) {
 
 
 void unification_environment::log_variable(term_index variable_index) {
-    if (variable_name_map.contains(variable_index)) {
-        std::cout << variable_name_map[variable_index];
+    prolog_var& variable = term_vector[variable_index.raw()].variable();
+
+    if (variable.identifier == get_reserved_identifier_index("_")) {
+        std::cout << "V";
     } else {
-        std::cout << "V" << variable_index.raw();
+        std::cout << identifier_vector[variable.identifier.raw()];
     }
+
+    std::cout << subscript_number(static_cast<int>(variable_index.raw()));
 }
 
 void unification_environment::log_variables() {

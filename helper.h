@@ -1,6 +1,7 @@
 #ifndef HELPER_H
 #define HELPER_H
 
+#include <ranges>
 #include <vector>
 #include <fstream>
 #include <unordered_map>
@@ -55,7 +56,7 @@ struct strong_index {
         return strong_index(value - n);
     }
 
-    constexpr strong_index &operator++() noexcept {
+    constexpr strong_index& operator++() noexcept {
         ++value;
         return *this;
     }
@@ -66,7 +67,7 @@ struct strong_index {
         return tmp;
     }
 
-    constexpr strong_index &operator--() noexcept {
+    constexpr strong_index& operator--() noexcept {
         --value;
         return *this;
     }
@@ -92,7 +93,7 @@ struct std::hash<strong_index<Tag>> {
 };
 
 template <typename Tag>
-std::ostream &operator<<(std::ostream &stream, strong_index<Tag> index) {
+std::ostream& operator<<(std::ostream& stream, strong_index<Tag> index) {
     if (index == strong_index<Tag>::invalid()) {
         return stream << "null";
     }
@@ -105,7 +106,7 @@ std::ostream &operator<<(std::ostream &stream, strong_index<Tag> index) {
 #define RESET   "\033[0m"
 
 template <typename T>
-std::ostream &operator<<(std::ostream &stream, std::vector<T> &vector) {
+std::ostream& operator<<(std::ostream& stream, std::vector<T>& vector) {
     stream << '[';
     if (vector.size() != 0) {
         stream << vector[0];
@@ -117,7 +118,7 @@ std::ostream &operator<<(std::ostream &stream, std::vector<T> &vector) {
 }
 
 template <typename T, typename U>
-std::ostream &operator<<(std::ostream &stream, std::unordered_map<T, U> &map) {
+std::ostream& operator<<(std::ostream& stream, std::unordered_map<T, U>& map) {
     stream << '{';
 
     auto it = map.begin();
@@ -133,7 +134,7 @@ std::ostream &operator<<(std::ostream &stream, std::unordered_map<T, U> &map) {
     return stream << '}';
 }
 
-inline std::string read_file(const std::string &path) {
+inline std::string read_file(const std::string& path) {
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file)
         throw std::runtime_error("Failed to open file");
@@ -147,7 +148,7 @@ inline std::string read_file(const std::string &path) {
     return buffer;
 }
 
-inline std::string generate_select_pointer_string(std::string &s, int i) {
+inline std::string generate_select_pointer_string(std::string& s, int i) {
     int visual = 0;
     for (int j = 0; j <= i; j++) {
         if (s[j] == '\t') {
@@ -160,7 +161,7 @@ inline std::string generate_select_pointer_string(std::string &s, int i) {
 }
 
 inline std::string generate_position_error_string(
-    std::string &s, int i, int line_number) {
+    std::string& s, int i, int line_number) {
     std::string pointer = generate_select_pointer_string(s, i);
     std::string line_number_string = std::to_string(line_number);
     std::string padding = std::string(line_number_string.size(), ' ');
@@ -170,16 +171,33 @@ inline std::string generate_position_error_string(
 
 template <typename... Args>
 std::logic_error formatted_error(std::format_string<Args...> fmt,
-                                 Args &&... args) {
+                                 Args&&... args) {
     return std::logic_error(std::format(fmt, std::forward<Args>(args)...));
 }
 
-inline void print_green(const std::string &s) {
+inline void print_green(const std::string& s) {
     std::cout << GREEN << s << RESET;
 }
 
-inline void print_red(const std::string &s) {
+inline void print_red(const std::string& s) {
     std::cout << RED << s << RESET;
+}
+
+inline constexpr char subscript_digits[] = "₀₁₂₃₄₅₆₇₈₉";
+
+inline std::string subscript_number(int n) {
+    static constexpr const char* digits[] = {
+        "₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"
+    };
+    std::vector<const char*> parts;
+    while (n != 0) {
+        parts.push_back(digits[n % 10]);
+        n /= 10;
+    }
+    std::string out;
+    for (auto& part : std::ranges::reverse_view(parts))
+        out += part;
+    return out;
 }
 
 #endif //HELPER_H

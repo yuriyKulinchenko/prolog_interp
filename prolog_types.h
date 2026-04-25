@@ -27,24 +27,28 @@ enum class prolog_var_type {
 };
 
 struct prolog_var {
-    prolog_var();
-    prolog_var(prolog_var_type type, term_index index);
+    explicit prolog_var(identifier_index identifier);
 
-    prolog_var_type type;
-    term_index index;
+    prolog_var(prolog_var_type type, term_index index,
+               identifier_index identifier, int version);
+
+    prolog_var_type type = prolog_var_type::UNBOUND;
+    term_index index = term_index::invalid();
+    identifier_index identifier = identifier_index::invalid();
+    int version = 0;
 };
 
 
 struct prolog_struct {
     prolog_struct();
-    explicit prolog_struct(size_t num_children);
-    prolog_struct(size_t num_children, identifier_index index);
 
+    explicit prolog_struct(size_t num_children);
+
+    prolog_struct(size_t num_children, identifier_index index);
     prolog_struct(prolog_struct&& other) noexcept;
     prolog_struct& operator=(prolog_struct&& other) noexcept;
     prolog_struct(const prolog_struct& other);
     prolog_struct& operator=(const prolog_struct& other);
-
     ~prolog_struct();
 
     term_index& operator[](size_t i);
@@ -76,6 +80,7 @@ std::string prolog_term_type_to_string(prolog_term_type type);
 struct prolog_term {
     explicit prolog_term(prolog_term_type type);
     explicit prolog_term(int integer);
+    explicit prolog_term(prolog_var);
 
     prolog_struct& structure();
     prolog_var& variable();
@@ -93,12 +98,11 @@ struct prolog_term {
 };
 
 struct prolog_clause {
-    prolog_clause(term_index head, term_index body):
-        head(head), body(body) {
+    prolog_clause(term_index head, term_index body): head(head), body(body) {
     }
 
-    explicit prolog_clause(term_index head):
-        head(head), body(term_index::invalid()) {
+    explicit prolog_clause(term_index head): head(head),
+                                             body(term_index::invalid()) {
     }
 
     term_index head; // Term
@@ -110,9 +114,8 @@ struct prolog_timestamp {
         term_index term_index_,
         clause_index clause_index_,
         trail_index trail_index_
-        ):
-        term_index_(term_index_), clause_index_(clause_index_),
-        trail_index_(trail_index_) {
+        ): term_index_(term_index_), clause_index_(clause_index_),
+           trail_index_(trail_index_) {
     }
 
     term_index term_index_;
