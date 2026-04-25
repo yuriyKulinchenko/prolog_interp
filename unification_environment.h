@@ -61,6 +61,10 @@ public:
 
     std::vector<term_index>& get_trail();
 
+    void log_term(term_index i, int depth = max_logging_depth);
+    void log_bracketed_term(term_index i, int depth = max_logging_depth);
+    void log_variables();
+
     static consteval identifier_index get_reserved_identifier_index(
         std::string_view s) {
         for (size_t i = 0; i < reserved_identifiers.size(); i++) {
@@ -106,11 +110,8 @@ private:
     void unwind_clause_vector(clause_index i);
     void unwind_trail(trail_index i);
 
-    void log_variables();
     void log_clauses();
 
-    void log_term(term_index i, int depth = max_logging_depth);
-    void log_bracketed_term(term_index i, int depth = max_logging_depth);
     void log_structure(term_index structure_index, int depth);
     void log_variable(term_index variable_index);
 

@@ -835,7 +835,7 @@ void unification_environment::apply_timestamp(prolog_timestamp timestamp) {
     unwind_term_vector(timestamp.term_index_);
 }
 
-std::vector<term_index> unification_environment::get_trail() {
+std::vector<term_index>& unification_environment::get_trail() {
     return trail;
 }
 

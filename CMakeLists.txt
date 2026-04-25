@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-add_executable(prolog_interp main.cpp
+add_library(prolog_interp_lib STATIC
         lexer.cpp
         lexer.h
         helper.h
@@ -20,3 +20,6 @@ add_executable(prolog_interp main.cpp
         frame_solver.cpp
         frame_solver.h
         frame_solver_types.h)
+
+add_executable(prolog_interp main.cpp)
+target_link_libraries(prolog_interp PRIVATE prolog_interp_lib)
