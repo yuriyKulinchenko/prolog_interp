@@ -4,7 +4,7 @@
 #include "frame_solver_types.h"
 #include "unification_environment.h"
 
-// #define FRAME_SOLVER_DEBUG
+#define FRAME_SOLVER_DEBUG
 
 class frame_solver {
 public:
@@ -12,6 +12,12 @@ public:
     using continuation_state = frame_solver_types::continuation_state;
     using frame = frame_solver_types::frame;
     using decision_point = frame_solver_types::decision_point;
+
+    using c_idx = clause_index;
+    using f_idx = frame_index;
+    using fh_idx = frame_history_index;
+    using t_idx = term_index;
+    using cs = continuation_state;
 
     explicit
     frame_solver(unification_environment& environment): env(environment),
@@ -24,14 +30,11 @@ public:
 
     frame_solver_types::step_type step();
 
-    application_result apply_clause(clause_index clause_idx,
-                                    term_index head_index,
-                                    frame_index parent,
-                                    frame_history_index cut_point,
-                                    continuation_state parent_continuation);
+    application_result apply_clause(c_idx clause_idx, t_idx head_index,
+                                    f_idx parent, fh_idx cut_point,
+                                    cs parent_continuation);
 
-    application_result apply_clause_tail(clause_index clause_idx,
-                                         frame_index stack_index,
+    application_result apply_clause_tail(c_idx clause_idx, t_idx head_index,
                                          frame& current_frame);
 
     void unwind();
@@ -42,15 +45,19 @@ public:
     void log_history();
 
     [[nodiscard]] bool at_end() const;
-
     [[nodiscard]] frame_index get_stack_pointer() const { return stack_index; }
 
 private:
-    void add_frame(term_index index,
-                   frame_index parent = frame_index::invalid(),
-                   frame_history_index cut_point =
-                       frame_history_index::invalid(),
-                   continuation_state parent_continuation = {});
+    void add_frame(
+        t_idx index, f_idx parent = f_idx::invalid(),
+        fh_idx cut_point = fh_idx::invalid(),
+        cs parent_continuation = {});
+
+    frame create_frame(
+        t_idx index, f_idx parent = f_idx::invalid(),
+        fh_idx cut_point = fh_idx::invalid(),
+        cs parent_continuation = {}) const;
+
 
     bool restore_decision_point();
 
@@ -58,13 +65,12 @@ private:
 
     void log_frame(frame& frame_);
 
-    // These return 'true' if execution can proceed
+    // handle_rule() returns true if and only if rule application is successful.
     bool handle_rule(frame& current_frame);
+    bool handle_application_result(application_result result);
 
     void handle_conjunction(frame& current_frame);
-
     void handle_disjunction(frame& current_frame);
-
     void handle_cut(frame& current_frame);
 
 
