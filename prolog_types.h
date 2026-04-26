@@ -29,6 +29,8 @@ enum class prolog_var_type {
 struct prolog_var {
     explicit prolog_var(identifier_index identifier);
 
+    prolog_var(identifier_index identifier, int version);
+
     prolog_var(prolog_var_type type, term_index index,
                identifier_index identifier, int version);
 

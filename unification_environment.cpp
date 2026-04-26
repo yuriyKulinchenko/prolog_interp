@@ -120,10 +120,10 @@ clause_index unification_environment::duplicate_clause(clause_index index) {
     std::unordered_map<term_index, term_index> variable_map{};
     term_index duplicated_head = duplicate_term(original_clause.head,
                                                 variable_map);
-    term_index duplicated_body = original_clause.body == term_index::invalid()
-                                     ? term_index::invalid()
-                                     : duplicate_term(
-                                         original_clause.body, variable_map);
+    term_index duplicated_body =
+        original_clause.body == term_index::invalid()
+            ? term_index::invalid()
+            : duplicate_term(original_clause.body, variable_map);
     clause_vector.emplace_back(duplicated_head, duplicated_body);
     return duplicated_clause_index;
 }
@@ -137,10 +137,10 @@ term_index unification_environment::duplicate_term(
         using enum prolog_term_type;
     case VARIABLE: {
 #ifdef UNIFICATION_DEBUG
-            if (term.as.variable.type == prolog_variable_type::BOUND) {
-                log_term(std::cerr, index) << '\n';
-                throw std::logic_error("ERROR: Cannot duplicate bound variable");
-            }
+        if (term.is_bound_variable()) {
+            log_term(index);
+            throw std::logic_error("ERROR: Cannot duplicate bound variable");
+        }
 #endif
         return duplicate_variable(index, variable_map);
     }
@@ -185,10 +185,14 @@ term_index unification_environment::duplicate_variable(
 
     // If mapping does not exist:
 
-    term_index duplicated_variable_index{term_vector.size()};
     prolog_var& original_variable = term_vector[index.raw()].variable();
+    term_index duplicated_variable_index{term_vector.size()};
 
-    prolog_var duplicated_variable{original_variable.identifier};
+    int new_version =
+        ++variable_version_vector[original_variable.identifier.raw()];
+
+    prolog_var duplicated_variable =
+        {original_variable.identifier, new_version};
     term_vector.emplace_back(duplicated_variable);
 
     variable_map[index] = duplicated_variable_index;
@@ -281,9 +285,8 @@ term_index unification_environment::add_structure(node& node_instance) {
 }
 
 term_index unification_environment::add_variable(std::string& variable_name) {
-
-    // Variable names are also added to the identifier index:
-    identifier_index variable_name_index = add_identifier(variable_name);
+    identifier_index variable_name_index =
+        add_variable_identifier(variable_name);
 
     if (name_variable_map.contains(variable_name) && variable_name != "_") {
         return name_variable_map[variable_name];
@@ -314,12 +317,28 @@ identifier_index unification_environment::add_identifier(
     if (it != identifier_map.end()) {
         index = it->second;
     } else {
+        index = identifier_index{identifier_vector.size()};
         identifier_vector.push_back(name);
-        index = identifier_index{identifier_vector.size() - 1};
         identifier_map[name] = index;
     }
     return index;
 }
+
+identifier_index unification_environment::add_variable_identifier(
+    const std::string& variable_name) {
+    identifier_index index{};
+    auto it = variable_identifier_map.find(variable_name);
+    if (it != variable_identifier_map.end()) {
+        index = it->second;
+    } else {
+        index = identifier_index{variable_identifier_vector.size()};
+        variable_identifier_vector.push_back(variable_name);
+        variable_version_vector.push_back(0);
+        variable_identifier_map[variable_name] = index;
+    }
+    return index;
+}
+
 
 term_index unification_environment::resolve_bound_variable(
     term_index variable_index) {
@@ -381,8 +400,10 @@ bool unification_environment::unify_ground(term_index i, term_index j) {
     prolog_struct& j_structure = get_struct(j);
     if (i_structure.index != j_structure.index) {
 #ifdef UNIFICATION_DEBUG
-        std::cout << "Identifiers: " << identifier_vector[i_structure.index.raw()]
-        << ", " << identifier_vector[j_structure.index.raw()] << " do not match.\n";
+        std::cout <<
+            "Identifiers: " << identifier_vector[i_structure.index.raw()]
+            << ", " << identifier_vector[j_structure.index.raw()] <<
+            " do not match.\n";
 #endif
         return false;
     }
@@ -390,7 +411,7 @@ bool unification_environment::unify_ground(term_index i, term_index j) {
     if (i_structure.num_children != j_structure.num_children) {
 #ifdef UNIFICATION_DEBUG
         std::cout << "Arity of " << i_structure.num_children
-        << " and " << j_structure.num_children << " do not match.\n";
+            << " and " << j_structure.num_children << " do not match.\n";
 #endif
         return false;
     }
@@ -683,10 +704,10 @@ void unification_environment::log_variable(term_index variable_index) {
     if (variable.identifier == get_reserved_identifier_index("_")) {
         std::cout << "V";
     } else {
-        std::cout << identifier_vector[variable.identifier.raw()];
+        std::cout << variable_identifier_vector[variable.identifier.raw()];
     }
 
-    std::cout << subscript_number(static_cast<int>(variable_index.raw()));
+    std::cout << subscript_number(variable.version);
 }
 
 void unification_environment::log_variables() {
@@ -854,8 +875,14 @@ std::vector<term_index>& unification_environment::get_trail() {
 }
 
 
-const std::vector<std::string>& unification_environment::get_identifier_vector() const {
+const std::vector<std::string>&
+unification_environment::get_identifier_vector() const {
     return identifier_vector;
+}
+
+const std::vector<std::string>&
+unification_environment::get_variable_identifier_vector() const {
+    return variable_identifier_vector;
 }
 
 prolog_term& unification_environment::get_term_at(size_t i) {

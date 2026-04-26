@@ -7,6 +7,10 @@ prolog_var::prolog_var(identifier_index identifier):
     identifier(identifier) {
 }
 
+prolog_var::prolog_var(identifier_index identifier, int version):
+    identifier(identifier), version(version) {
+}
+
 prolog_var::prolog_var(prolog_var_type type, term_index index,
                        identifier_index identifier, int version)
     : type(type),

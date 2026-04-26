@@ -66,6 +66,7 @@ public:
     [[nodiscard]] size_t get_term_count() const;
     [[nodiscard]] const std::unordered_map<std::string, term_index>&
     get_name_variable_map() const;
+    [[nodiscard]] const std::vector<std::string>& get_variable_identifier_vector() const;
 
     void log_term(term_index i, int depth = max_logging_depth);
     void log_bracketed_term(term_index i, int depth = max_logging_depth);
@@ -94,6 +95,7 @@ private:
     term_index add_integer(int integer);
     term_index add_variable(std::string& variable_name);
     identifier_index add_identifier(const std::string& name);
+    identifier_index add_variable_identifier(const std::string& variable_name);
 
     clause_index duplicate_clause(clause_index index);
     term_index duplicate_term(term_index index,
@@ -138,14 +140,18 @@ private:
     void apply_timestamp(prolog_timestamp timestamp);
 
     std::vector<prolog_term> term_vector;
-    std::vector<std::string> identifier_vector;
     std::vector<prolog_clause> clause_vector;
+
+    std::vector<std::string> identifier_vector;
+    std::vector<std::string> variable_identifier_vector;
+    std::vector<int> variable_version_vector;
+
+    std::unordered_map<std::string, identifier_index> identifier_map;
+    std::unordered_map<std::string, identifier_index> variable_identifier_map;
     std::vector<std::pair<clause_index, clause_index>> identifier_clause_map;
-    // Maps identifier index to start of clause
 
     std::unordered_map<std::string, term_index> name_variable_map;
     std::unordered_map<term_index, std::string> variable_name_map;
-    std::unordered_map<std::string, identifier_index> identifier_map;
 
     static constexpr int max_logging_depth = 20;
 
