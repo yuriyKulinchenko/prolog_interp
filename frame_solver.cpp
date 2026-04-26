@@ -164,7 +164,8 @@ step_type frame_solver::step() {
         if (!handle_rule(current_frame)) {
             return backtrack() ? BACKTRACK : FINISH;
         }
-        return INVOKE_RULE;
+        return
+            (stack_index == frame_index::invalid()) ? SUCCESS : INVOKE_RULE;
     }
 
     case frame_type::CONJUNCTION: {
@@ -258,10 +259,13 @@ bool frame_solver::handle_rule(frame& current_frame) {
         continuation_state continuation = current_frame.continuation;
         frame_history_index cut_point = current_frame.cut_point;
 
+        if (structure.index.raw() >= env.identifier_clause_map.size()) {
+            return false;
+        }
+
         auto [lower_bound, upper_bound] =
             env.identifier_clause_map[structure.index.raw()];
 
-        // If the clause is not valid, immediately return:
         if (upper_bound == clause_index{0}) {
             return false;
         }

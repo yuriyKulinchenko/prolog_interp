@@ -40,6 +40,7 @@ int main() {
     std::vector<node> clauses = frontend.program(read_file(PATH));
     environment.add_clauses(clauses);
 
-    test_step(environment, frontend);
+    // test_step(environment, frontend);
+    run_interpreter(environment);
     return 0;
 }
