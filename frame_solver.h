@@ -4,7 +4,7 @@
 #include "frame_solver_types.h"
 #include "unification_environment.h"
 
-#define FRAME_SOLVER_DEBUG
+// #define FRAME_SOLVER_DEBUG
 
 class frame_solver {
 public:

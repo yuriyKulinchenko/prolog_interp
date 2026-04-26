@@ -66,7 +66,8 @@ public:
     [[nodiscard]] size_t get_term_count() const;
     [[nodiscard]] const std::unordered_map<std::string, term_index>&
     get_name_variable_map() const;
-    [[nodiscard]] const std::vector<std::string>& get_variable_identifier_vector() const;
+    [[nodiscard]] const std::vector<std::string>&
+    get_variable_identifier_vector() const;
 
     void log_term(term_index i, int depth = max_logging_depth);
     void log_bracketed_term(term_index i, int depth = max_logging_depth);
@@ -98,15 +99,9 @@ private:
     identifier_index add_variable_identifier(const std::string& variable_name);
 
     clause_index duplicate_clause(clause_index index);
-    term_index duplicate_term(term_index index,
-                              std::unordered_map<term_index, term_index>&
-                              variable_map);
-    term_index duplicate_structure(term_index index,
-                                   std::unordered_map<term_index, term_index>&
-                                   variable_map);
-    term_index duplicate_variable(term_index index,
-                                  std::unordered_map<term_index, term_index>&
-                                  variable_map);
+    term_index duplicate_term(term_index index);
+    term_index duplicate_structure(term_index index);
+    term_index duplicate_variable(term_index index);
 
     bool unify(term_index i, term_index j);
     bool unify_ground(term_index i, term_index j);

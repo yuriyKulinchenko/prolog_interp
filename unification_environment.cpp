@@ -113,24 +113,41 @@ clause_index unification_environment::add_clause(node& node_instance) {
     return idx;
 }
 
+// 'variable_bindings' and 'dirty_indices' are used during clause duplication
+
+std::vector<term_index> variable_bindings;
+std::vector<size_t> dirty_indices;
+size_t dirty_indices_length;
+
+void add_variable_binding(identifier_index original, term_index duplicate) {
+    variable_bindings[original.raw()] = duplicate;
+    dirty_indices[dirty_indices_length++] = original.raw();
+}
+
+void clear_variable_bindings() {
+    for (int i = 0; i < dirty_indices_length; i++) {
+        variable_bindings[dirty_indices[i]] = term_index::invalid();
+    }
+    dirty_indices_length = 0;
+}
+
 clause_index unification_environment::duplicate_clause(clause_index index) {
     // Duplicates a clause, returns its index:
     clause_index duplicated_clause_index{clause_vector.size()};
     prolog_clause& original_clause = clause_vector[index.raw()];
-    std::unordered_map<term_index, term_index> variable_map{};
-    term_index duplicated_head = duplicate_term(original_clause.head,
-                                                variable_map);
+
+    term_index duplicated_head = duplicate_term(original_clause.head);
     term_index duplicated_body =
         original_clause.body == term_index::invalid()
             ? term_index::invalid()
-            : duplicate_term(original_clause.body, variable_map);
+            : duplicate_term(original_clause.body);
     clause_vector.emplace_back(duplicated_head, duplicated_body);
+
+    clear_variable_bindings();
     return duplicated_clause_index;
 }
 
-term_index unification_environment::duplicate_term(
-    term_index index,
-    std::unordered_map<term_index, term_index>& variable_map) {
+term_index unification_environment::duplicate_term(term_index index) {
     prolog_term& term = term_vector[index.raw()];
 
     switch (term.type) {
@@ -142,11 +159,11 @@ term_index unification_environment::duplicate_term(
             throw std::logic_error("ERROR: Cannot duplicate bound variable");
         }
 #endif
-        return duplicate_variable(index, variable_map);
+        return duplicate_variable(index);
     }
 
     case STRUCTURE: {
-        return duplicate_structure(index, variable_map);
+        return duplicate_structure(index);
     }
 
     case INTEGER: {
@@ -156,9 +173,7 @@ term_index unification_environment::duplicate_term(
     return term_index::invalid();
 }
 
-term_index unification_environment::duplicate_structure(
-    term_index index,
-    std::unordered_map<term_index, term_index>& variable_map) {
+term_index unification_environment::duplicate_structure(term_index index) {
     size_t n = get_struct(index).num_children;
     if (n == 0)
         return index;
@@ -167,7 +182,7 @@ term_index unification_environment::duplicate_structure(
     prolog_struct dup(n, orig_id);
 
     for (size_t i = 0; i < n; i++) {
-        dup[i] = duplicate_term(get_struct(index)[i], variable_map);
+        dup[i] = duplicate_term(get_struct(index)[i]);
     }
 
     term_index duplicate_index{term_vector.size()};
@@ -176,16 +191,16 @@ term_index unification_environment::duplicate_structure(
     return duplicate_index;
 }
 
-term_index unification_environment::duplicate_variable(
-    term_index index,
-    std::unordered_map<term_index, term_index>& variable_map) {
+term_index unification_environment::duplicate_variable(term_index index) {
+    prolog_var& original_variable = term_vector[index.raw()].variable();
+
     // If mapping exists:
-    if (variable_map.contains(index))
-        return variable_map[index];
+    if (variable_bindings[original_variable.identifier.raw()] !=
+        term_index::invalid()) {
+        return variable_bindings[original_variable.identifier.raw()];
+    }
 
     // If mapping does not exist:
-
-    prolog_var& original_variable = term_vector[index.raw()].variable();
     term_index duplicated_variable_index{term_vector.size()};
 
     int new_version =
@@ -195,7 +210,8 @@ term_index unification_environment::duplicate_variable(
         {original_variable.identifier, new_version};
     term_vector.emplace_back(duplicated_variable);
 
-    variable_map[index] = duplicated_variable_index;
+    add_variable_binding(original_variable.identifier,
+                         duplicated_variable_index);
     return duplicated_variable_index;
 }
 
@@ -238,6 +254,12 @@ void unification_environment::add_clauses(std::vector<node>& nodes) {
         identifier_clause_map[current_id.raw()] =
             {start_index, clause_index{clause_vector.size()}};
     }
+
+    variable_bindings =
+        std::vector(variable_identifier_vector.size(), term_index::invalid());
+
+    dirty_indices =
+        std::vector<size_t>(variable_identifier_vector.size());
 }
 
 
