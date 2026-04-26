@@ -4,3 +4,5 @@ IndentWidth: 4
 AllowShortIfStatementsOnASingleLine: WithoutElse
 DerivePointerAlignment: false
 PointerAlignment: Left
+AlwaysBreakAfterReturnType: None
+AlwaysBreakAfterDefinitionReturnType: None

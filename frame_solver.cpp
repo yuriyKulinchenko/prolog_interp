@@ -99,7 +99,7 @@ do {                    \
     log_frame_stack();  \
     log_history();      \
     puts("\n");         \
-} while (false)         \
+} while (false)
 
 #define ASSERT(X) assert(X)
 
@@ -111,8 +111,7 @@ do {                    \
 
 frame_solver& frame_solver::operator++() {
     if (stack_index == frame_index::invalid()) {
-        if (!backtrack())
-            return *this;
+        if (!backtrack()) return *this;
         PRINT_TRACE();
     }
 
@@ -123,7 +122,9 @@ frame_solver& frame_solver::operator++() {
         switch (current_frame.type) {
 
         case frame_type::RULE: {
-            if (!handle_rule(current_frame)) return *this;
+            if (!handle_rule(current_frame)) {
+                if (!backtrack()) return *this;
+            }
             continue;
         }
 
@@ -160,7 +161,10 @@ step_type frame_solver::step() {
     switch (current_frame.type) {
 
     case frame_type::RULE: {
-        return handle_rule(current_frame) ? INVOKE_RULE : BACKTRACK;
+        if (!handle_rule(current_frame)) {
+            return backtrack() ? BACKTRACK : FINISH;
+        }
+        return INVOKE_RULE;
     }
 
     case frame_type::CONJUNCTION: {
@@ -184,16 +188,12 @@ step_type frame_solver::step() {
 }
 
 #define COMPARISON_CASE(op, cond)\
-CASE(op): {                                                                 \
-current_frame.continuation.remains = false;                                 \
-int left_val = env.evaluate_arithmetic_term(structure.left());              \
-int right_val = env.evaluate_arithmetic_term(structure.right());            \
-if (cond) {                                                                 \
-unwind();                                                                   \
-} else {                                                                    \
-if(!backtrack()) return false;                                              \
-}                                                                           \
-return true;                                                                \
+CASE(op): {                                                                     \
+    current_frame.continuation.remains = false;                                 \
+    int left_val = env.evaluate_arithmetic_term(structure.left());              \
+    int right_val = env.evaluate_arithmetic_term(structure.right());            \
+    if (cond) {unwind(); return true;}                                          \
+    return false;                                                               \
 }
 
 bool frame_solver::handle_rule(frame& current_frame) {
@@ -225,7 +225,7 @@ bool frame_solver::handle_rule(frame& current_frame) {
         if (env.unify(left, right)) {
             unwind();
         } else {
-            return backtrack();
+            return false;
         }
         return true;
     }
@@ -237,7 +237,7 @@ bool frame_solver::handle_rule(frame& current_frame) {
 
         if (env.unify(left, right)) {
             env.apply_timestamp(timestamp);
-            return backtrack();
+            return false;
         }
 
         unwind();
@@ -263,7 +263,7 @@ bool frame_solver::handle_rule(frame& current_frame) {
 
         // If the clause is not valid, immediately return:
         if (upper_bound == clause_index{0}) {
-            return backtrack();
+            return false;
         }
 
         size_t decision_range = upper_bound.raw() - lower_bound.raw();
@@ -311,7 +311,7 @@ bool frame_solver::handle_rule(frame& current_frame) {
             stack_index = top_index();
             return true;
         case FAILURE:
-            return backtrack();
+            return false;
         }
     }
     // ReSharper disable once CppDFAUnreachableCode

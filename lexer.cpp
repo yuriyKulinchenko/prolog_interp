@@ -156,7 +156,7 @@ std::vector<token> lexer::run() {
 }
 
 void lexer::reset(std::string&& source_code) {
-    source_code = std::move(source_code);
+    this->source_code = std::move(source_code);
     token_vector.clear();
     i = 0;
     current_line_index = 0;

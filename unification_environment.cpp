@@ -1,9 +1,4 @@
-//
-// Created by Yuriy Kulinchenko on 31/03/2026.
-//
-
 #include "unification_environment.h"
-#include "solver.h"
 #include "helper.h"
 #include <iostream>
 #include <print>
@@ -858,3 +853,20 @@ std::vector<term_index>& unification_environment::get_trail() {
     return trail;
 }
 
+
+const std::vector<std::string>& unification_environment::get_identifier_vector() const {
+    return identifier_vector;
+}
+
+prolog_term& unification_environment::get_term_at(size_t i) {
+    return term_vector[i];
+}
+
+size_t unification_environment::get_term_count() const {
+    return term_vector.size();
+}
+
+const std::unordered_map<std::string, term_index>&
+unification_environment::get_name_variable_map() const {
+    return name_variable_map;
+}

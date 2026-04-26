@@ -84,6 +84,24 @@ enum class application_result {
 enum class step_type {
     FINISH, BACKTRACK, INVOKE_RULE, INVOKE_CONJUNCTION, INVOKE_DISJUNCTION, CUT
 };
+
+inline std::string step_type_to_string_(step_type type) {
+    switch (type) {
+        using enum step_type;
+    case FINISH:
+        return "FINISH";
+    case BACKTRACK:
+        return "BACKTRACK";
+    case INVOKE_RULE:
+        return "INVOKE_RULE";
+    case INVOKE_CONJUNCTION:
+        return "INVOKE_CONJUNCTION";
+    case INVOKE_DISJUNCTION:
+        return "INVOKE_DISJUNCTION";
+    case CUT:
+        return "CUT";
+    }
+    return "UNKNOWN";
 }
 
 struct frame_logger_configuration {
@@ -91,5 +109,6 @@ struct frame_logger_configuration {
     static constexpr bool log_parent = true;
     static constexpr bool log_cut_point = true;
 };
+}
 
 #endif //FRAME_SOLVER_TYPES_H

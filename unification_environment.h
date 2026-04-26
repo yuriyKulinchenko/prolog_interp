@@ -61,6 +61,12 @@ public:
 
     std::vector<term_index>& get_trail();
 
+    [[nodiscard]] const std::vector<std::string>& get_identifier_vector() const;
+    [[nodiscard]] prolog_term& get_term_at(size_t i);
+    [[nodiscard]] size_t get_term_count() const;
+    [[nodiscard]] const std::unordered_map<std::string, term_index>&
+    get_name_variable_map() const;
+
     void log_term(term_index i, int depth = max_logging_depth);
     void log_bracketed_term(term_index i, int depth = max_logging_depth);
     void log_variables();
