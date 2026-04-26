@@ -34,7 +34,7 @@ Sum ::= Product (('+'|'-') Sum)?
 Product ::= SimpleTerm (('*'|'/') Product)?
 
 SimpleTerm ::= variable
-       | integer
+       | ('+'|'-')? integer
        | identifier
        | identifier '(' Elements ')'
        | List

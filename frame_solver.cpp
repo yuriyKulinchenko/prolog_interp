@@ -85,6 +85,11 @@ bool is_success(application_result result) {
     return is_fact(result) || is_rule(result);
 }
 
+template <typename T>
+bool invalid(strong_index<T> index) {
+    return index == strong_index<T>::invalid();
+}
+
 void frame_solver::solve(term_index goal_index) {
     stack_index = frame_index{0};
     found_all = false;
@@ -110,12 +115,12 @@ do {                    \
 
 
 frame_solver& frame_solver::operator++() {
-    if (stack_index == frame_index::invalid()) {
+    if (invalid(stack_index)) {
         if (!backtrack()) return *this;
         PRINT_TRACE();
     }
 
-    while (stack_index != frame_index::invalid()) {
+    while (!invalid(stack_index)) {
         PRINT_TRACE();
         frame& current_frame = stack[stack_index.raw()];
 
@@ -151,7 +156,7 @@ frame_solver& frame_solver::operator++() {
 
 step_type frame_solver::step() {
     using enum step_type;
-    if (stack_index == frame_index::invalid()) {
+    if (invalid(stack_index)) {
         return backtrack() ? BACKTRACK : FINISH;
     }
 
@@ -162,8 +167,12 @@ step_type frame_solver::step() {
         if (!handle_rule(current_frame)) {
             return backtrack() ? BACKTRACK : FINISH;
         }
-        return
-            (stack_index == frame_index::invalid()) ? SUCCESS : INVOKE_RULE;
+        return invalid(stack_index) ? SUCCESS_RULE : INVOKE_RULE;
+    }
+
+    case frame_type::CUT: {
+        handle_cut(current_frame);
+        return invalid(stack_index) ? SUCCESS_CUT : CUT;
     }
 
     case frame_type::CONJUNCTION: {
@@ -174,11 +183,6 @@ step_type frame_solver::step() {
     case frame_type::DISJUNCTION: {
         handle_disjunction(current_frame);
         return INVOKE_DISJUNCTION;
-    }
-
-    case frame_type::CUT: {
-        handle_cut(current_frame);
-        return CUT;
     }
 
     default:

@@ -181,13 +181,35 @@ node parser::product() {
     return left;
 }
 
-// SimpleTerm ::= variable | integer | identifier | identifier '(' Elements ')' | List
+// SimpleTerm ::= variable | ('+'|'-')? integer
+// | identifier | identifier '(' Elements ')' | List
 
 node parser::simple_term() {
     if (check(token_type::VARIABLE)) {
         return node{node_type::VARIABLE, advance().identifier()};
     }
 
+    // Unary '+':
+    if (check(token_type::PLUS)) {
+        token& erroneous_token = advance();
+        int value = consume(
+            token_type::INTEGER,
+            "Expect integer to follow unary '+'",
+            erroneous_token).integer();
+        return {node_type::INTEGER_TERM, value};
+    }
+
+    // Unary '-':
+    if (check(token_type::MINUS)) {
+        token& erroneous_token = advance();
+        int value = consume(
+            token_type::INTEGER,
+            "Expect integer to follow unary '-'",
+            erroneous_token).integer();
+        return {node_type::INTEGER_TERM, -value};
+    }
+
+    // Regular integer:
     if (check(token_type::INTEGER)) {
         return {node_type::INTEGER_TERM, advance().integer()};
     }

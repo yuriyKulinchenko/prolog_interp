@@ -82,7 +82,8 @@ enum class application_result {
 };
 
 enum class step_type {
-    FINISH, BACKTRACK, INVOKE_RULE, SUCCESS, INVOKE_CONJUNCTION,
+    FINISH, BACKTRACK, INVOKE_RULE, SUCCESS_CUT, SUCCESS_RULE,
+    INVOKE_CONJUNCTION,
     INVOKE_DISJUNCTION, CUT
 };
 
@@ -93,8 +94,10 @@ inline std::string step_type_to_string_(step_type type) {
         return "FINISH";
     case BACKTRACK:
         return "BACKTRACK";
-    case SUCCESS:
-        return "SUCCESS";
+    case SUCCESS_CUT:
+        return "SUCCESS_CUT";
+    case SUCCESS_RULE:
+        return "SUCCESS_RULE";
     case INVOKE_RULE:
         return "INVOKE_RULE";
     case INVOKE_CONJUNCTION:
