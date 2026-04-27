@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include "parser.h"
+#include "strong_indices.h"
 #include "prolog_types.h"
 
 // #define UNIFICATION_DEBUG
@@ -43,15 +44,12 @@ A decision point is uniquely identified by:
 
 class unification_environment {
 public:
-    // Adds the term specified by the passed node to the term_vector
-    // Returns a pair specifying if the term is a raw term or variable, and the corresponding index
-
     friend class solver;
     friend class frame_solver;
     unification_environment();
 
-    term_index add_node(node& node);
-    clause_index add_clause(node& node);
+    term_idx add_node(node& node);
+    clause_idx add_clause(node& node);
     void add_clauses(std::vector<node>& nodes);
 
     void test_unification();
@@ -59,97 +57,96 @@ public:
     void test_duplication(const std::string& path);
     void run_interpreter();
 
-    std::vector<term_index>& get_trail();
+    trail_vec& get_trail();
 
-    [[nodiscard]] const std::vector<std::string>& get_identifier_vector() const;
-    [[nodiscard]] prolog_term& get_term_at(size_t i);
+    [[nodiscard]] const name_vec& get_names() const;
+    [[nodiscard]] const var_name_vec& get_var_names() const;
+    [[nodiscard]] const std::unordered_map<std::string, term_idx>& get_name_variable_map() const;
+
+    [[nodiscard]] prolog_term& get_term_at(term_idx i);
     [[nodiscard]] size_t get_term_count() const;
-    [[nodiscard]] const std::unordered_map<std::string, term_index>&
-    get_name_variable_map() const;
-    [[nodiscard]] const std::vector<std::string>&
-    get_variable_identifier_vector() const;
 
-    [[nodiscard]] const prolog_clause& get_clause_at(clause_index idx) const;
+    [[nodiscard]] const prolog_clause& get_clause_at(clause_idx idx) const;
     [[nodiscard]] size_t get_clause_count() const;
 
-    void log_term(term_index i, int depth = max_logging_depth);
-    void log_bracketed_term(term_index i, int depth = max_logging_depth);
+    void log_term(term_idx i, int depth = max_logging_depth);
+    void log_bracketed_term(term_idx i, int depth = max_logging_depth);
     void log_variables();
 
-    static consteval identifier_index get_reserved_identifier_index(
+    static consteval name_idx get_reserved_identifier_index(
         std::string_view s) {
         for (size_t i = 0; i < reserved_identifiers.size(); i++) {
             if (reserved_identifiers[i] == s) {
-                return identifier_index{i};
+                return name_idx{i};
             }
         }
-        return identifier_index::invalid();
+        return name_idx::invalid();
     }
 
 private:
     template <prolog_term_type type>
-    void validate_type(term_index index);
-    prolog_term& get_term(term_index index);
-    prolog_struct& get_struct(term_index index);
-    prolog_var& get_var(term_index index);
-    prolog_clause& get_clause(clause_index index);
-    int get_integer(term_index index);
+    void validate_type(term_idx index);
+    prolog_term& get_term(term_idx index);
+    prolog_struct& get_struct(term_idx index);
+    prolog_var& get_var(term_idx index);
+    prolog_clause& get_clause(clause_idx index);
+    int get_integer(term_idx index);
 
-    term_index add_structure(node& node_instance);
-    term_index add_integer(int integer);
-    term_index add_variable(std::string& variable_name);
-    identifier_index add_identifier(const std::string& name);
-    identifier_index add_variable_identifier(const std::string& variable_name);
+    term_idx add_structure(node& node_instance);
+    term_idx add_integer(int integer);
+    term_idx add_variable(std::string& variable_name);
+    name_idx add_identifier(const std::string& name);
+    var_name_idx add_variable_identifier(const std::string& variable_name);
 
-    clause_index duplicate_clause(clause_index index);
-    term_index duplicate_term(term_index index);
-    term_index duplicate_structure(term_index index);
-    term_index duplicate_variable(term_index index);
+    clause_idx duplicate_clause(clause_idx index);
+    term_idx duplicate_term(term_idx index);
+    term_idx duplicate_structure(term_idx index);
+    term_idx duplicate_variable(term_idx index);
 
-    bool unify(term_index i, term_index j);
-    bool unify_ground(term_index i, term_index j);
-    void unify_unbound_variables(term_index i, term_index j);
-    void unify_unbound_variable_ground(term_index i, term_index j);
-    term_index resolve_bound_variable(term_index variable_index);
+    bool unify(term_idx i, term_idx j);
+    bool unify_ground(term_idx i, term_idx j);
+    void unify_unbound_variables(term_idx i, term_idx j);
+    void unify_unbound_variable_ground(term_idx i, term_idx j);
+    term_idx resolve_bound_variable(term_idx variable_index);
 
-    void unwind_term_vector(term_index i);
-    void unwind_clause_vector(clause_index i);
-    void unwind_trail(trail_index i);
+    void unwind_term_vector(term_idx i);
+    void unwind_clause_vector(clause_idx i);
+    void unwind_trail(trail_idx i);
 
     void log_clauses();
 
-    void log_structure(term_index structure_index, int depth);
-    void log_variable(term_index variable_index);
+    void log_structure(term_idx structure_index, int depth);
+    void log_variable(term_idx variable_index);
 
-    void log_list(term_index list_index, int depth);
-    void log_clause(clause_index idx, int depth = max_logging_depth);
-    void log_compound_term(term_index i, int depth, char seperator);
-    void log_infix_term(term_index i, int depth,
+    void log_list(term_idx list_index, int depth);
+    void log_clause(clause_idx idx, int depth = max_logging_depth);
+    void log_compound_term(term_idx i, int depth, char seperator);
+    void log_infix_term(term_idx i, int depth,
                         const std::string& infix_operator);
 
 
-    [[nodiscard]] bool is_compound_term(term_index i);
-    [[nodiscard]] bool is_infix_term(term_index i);
+    [[nodiscard]] bool is_compound_term(term_idx i);
+    [[nodiscard]] bool is_infix_term(term_idx i);
 
-    term_index evaluate_and_create_arithmetic_term(term_index i);
-    int evaluate_arithmetic_term(term_index i);
+    term_idx evaluate_and_create_arithmetic_term(term_idx i);
+    int evaluate_arithmetic_term(term_idx i);
 
     prolog_timestamp get_timestamp();
     void apply_timestamp(prolog_timestamp timestamp);
 
-    std::vector<prolog_term> term_vector;
-    std::vector<prolog_clause> clause_vector;
+    term_vec term_vector;
+    clause_vec clause_vector;
 
-    std::vector<std::string> identifier_vector;
-    std::vector<std::string> variable_identifier_vector;
-    std::vector<int> variable_version_vector;
+    name_vec identifier_vector;
+    var_name_vec variable_identifier_vector;
+    strong_vector<var_name_idx, int> variable_version_vector;
 
-    std::unordered_map<std::string, identifier_index> identifier_map;
-    std::unordered_map<std::string, identifier_index> variable_identifier_map;
-    std::vector<std::pair<clause_index, clause_index>> identifier_clause_map;
+    std::unordered_map<std::string, name_idx> identifier_map;
+    std::unordered_map<std::string, var_name_idx> variable_identifier_map;
+    strong_vector<name_idx, std::pair<clause_idx, clause_idx>> identifier_clause_map;
 
-    std::unordered_map<std::string, term_index> name_variable_map;
-    std::unordered_map<term_index, std::string> variable_name_map;
+    std::unordered_map<std::string, term_idx> name_variable_map;
+    std::unordered_map<term_idx, std::string> variable_name_map;
 
     static constexpr int max_logging_depth = 20;
 
@@ -161,7 +158,7 @@ private:
     };
 
     // For the operation of the interpreter:
-    std::vector<term_index> trail;
+    trail_vec trail;
 };
 
 

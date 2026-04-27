@@ -27,8 +27,8 @@ bool is_goal_string(std::string& name) {
 }
 
 template <prolog_term_type type>
-void unification_environment::validate_type(term_index index) {
-    prolog_term& term = term_vector[index.raw()];
+void unification_environment::validate_type(term_idx index) {
+    prolog_term& term = term_vector[index];
     if (!(term.type == type)) {
         std::string expected_type = prolog_term_type_to_string(type);
         std::string received_type = prolog_term_type_to_string(term.type);
@@ -37,36 +37,36 @@ void unification_environment::validate_type(term_index index) {
     }
 }
 
-prolog_term& unification_environment::get_term(term_index index) {
-    return term_vector[index.raw()];
+prolog_term& unification_environment::get_term(term_idx index) {
+    return term_vector[index];
 }
 
-prolog_struct& unification_environment::get_struct(term_index index) {
+prolog_struct& unification_environment::get_struct(term_idx index) {
 #ifdef PERFORM_UNIFICATION_TYPE_CHECK
     validate_type<prolog_term_type::STRUCTURE>(index);
 #endif
-    return term_vector[index.raw()].structure();
+    return term_vector[index].structure();
 }
 
-prolog_var& unification_environment::get_var(term_index index) {
+prolog_var& unification_environment::get_var(term_idx index) {
 #ifdef PERFORM_UNIFICATION_TYPE_CHECK
     validate_type<prolog_term_type::VARIABLE>(index);
 #endif
-    return term_vector[index.raw()].variable();
+    return term_vector[index].variable();
 }
 
-int unification_environment::get_integer(term_index index) {
+int unification_environment::get_integer(term_idx index) {
 #ifdef PERFORM_UNIFICATION_TYPE_CHECK
     validate_type<prolog_term_type::INTEGER>(index);
 #endif
-    return term_vector[index.raw()].integer();
+    return term_vector[index].integer();
 }
 
-prolog_clause& unification_environment::get_clause(clause_index index) {
-    return clause_vector[index.raw()];
+prolog_clause& unification_environment::get_clause(clause_idx index) {
+    return clause_vector[index];
 }
 
-term_index unification_environment::add_node(node& node) {
+term_idx unification_environment::add_node(node& node) {
     switch (node.type) {
         using enum node_type;
     case TERM:
@@ -84,7 +84,7 @@ term_index unification_environment::add_node(node& node) {
         "ERROR: Passed node is not a term, variable or goal");
 }
 
-clause_index unification_environment::add_clause(node& node_instance) {
+clause_idx unification_environment::add_clause(node& node_instance) {
     if (node_instance.type != node_type::CLAUSE) {
         std::string type_string = node_type_to_string(node_instance.type);
         throw formatted_error("ERROR: Expected clause, received {}",
@@ -102,10 +102,10 @@ clause_index unification_environment::add_clause(node& node_instance) {
     }
 
     clause_vector.emplace_back(add_node(node_instance.children[0]), node_instance.range);
-    clause_index idx{clause_vector.size() - 1};
+    clause_idx idx{clause_vector.size() - 1};
     if (node_instance.children.size() == 2) {
         // The body is also present:
-        clause_vector[idx.raw()].body = add_node(node_instance.children[1]);
+        clause_vector[idx].body = add_node(node_instance.children[1]);
     }
     // Remove all variable bindings:
     variable_name_map.clear();
@@ -115,31 +115,31 @@ clause_index unification_environment::add_clause(node& node_instance) {
 
 // 'variable_bindings' and 'dirty_indices' are used during clause duplication
 
-std::vector<term_index> variable_bindings;
+strong_vector<var_name_idx, term_idx> variable_bindings;
 std::vector<size_t> dirty_indices;
 size_t dirty_indices_length;
 
-void add_variable_binding(identifier_index original, term_index duplicate) {
-    variable_bindings[original.raw()] = duplicate;
+void add_variable_binding(var_name_idx original, term_idx duplicate) {
+    variable_bindings[original] = duplicate;
     dirty_indices[dirty_indices_length++] = original.raw();
 }
 
 void clear_variable_bindings() {
     for (int i = 0; i < dirty_indices_length; i++) {
-        variable_bindings[dirty_indices[i]] = term_index::invalid();
+        variable_bindings[var_name_idx{dirty_indices[i]}] = term_idx::invalid();
     }
     dirty_indices_length = 0;
 }
 
-clause_index unification_environment::duplicate_clause(clause_index index) {
+clause_idx unification_environment::duplicate_clause(clause_idx index) {
     // Duplicates a clause, returns its index:
-    clause_index duplicated_clause_index{clause_vector.size()};
-    prolog_clause& original_clause = clause_vector[index.raw()];
+    clause_idx duplicated_clause_index{clause_vector.size()};
+    prolog_clause& original_clause = clause_vector[index];
 
-    term_index duplicated_head = duplicate_term(original_clause.head);
-    term_index duplicated_body =
-        original_clause.body == term_index::invalid()
-            ? term_index::invalid()
+    term_idx duplicated_head = duplicate_term(original_clause.head);
+    term_idx duplicated_body =
+        original_clause.body == term_idx::invalid()
+            ? term_idx::invalid()
             : duplicate_term(original_clause.body);
     clause_vector.emplace_back(duplicated_head, duplicated_body);
 
@@ -147,8 +147,8 @@ clause_index unification_environment::duplicate_clause(clause_index index) {
     return duplicated_clause_index;
 }
 
-term_index unification_environment::duplicate_term(term_index index) {
-    prolog_term& term = term_vector[index.raw()];
+term_idx unification_environment::duplicate_term(term_idx index) {
+    prolog_term& term = term_vector[index];
 
     switch (term.type) {
         using enum prolog_term_type;
@@ -170,41 +170,41 @@ term_index unification_environment::duplicate_term(term_index index) {
         return index;
     }
     }
-    return term_index::invalid();
+    return term_idx::invalid();
 }
 
-term_index unification_environment::duplicate_structure(term_index index) {
+term_idx unification_environment::duplicate_structure(term_idx index) {
     size_t n = get_struct(index).num_children;
     if (n == 0)
         return index;
 
-    identifier_index orig_id = get_struct(index).index;
+    name_idx orig_id = get_struct(index).index;
     prolog_struct dup(n, orig_id);
 
     for (size_t i = 0; i < n; i++) {
         dup[i] = duplicate_term(get_struct(index)[i]);
     }
 
-    term_index duplicate_index{term_vector.size()};
+    term_idx duplicate_index{term_vector.size()};
     term_vector.emplace_back(prolog_term_type::STRUCTURE);
-    term_vector[duplicate_index.raw()].structure() = std::move(dup);
+    term_vector[duplicate_index].structure() = std::move(dup);
     return duplicate_index;
 }
 
-term_index unification_environment::duplicate_variable(term_index index) {
-    prolog_var& original_variable = term_vector[index.raw()].variable();
+term_idx unification_environment::duplicate_variable(term_idx index) {
+    prolog_var& original_variable = term_vector[index].variable();
 
     // If mapping exists:
-    if (variable_bindings[original_variable.identifier.raw()] !=
-        term_index::invalid()) {
-        return variable_bindings[original_variable.identifier.raw()];
+    if (variable_bindings[original_variable.identifier] !=
+        term_idx::invalid()) {
+        return variable_bindings[original_variable.identifier];
     }
 
     // If mapping does not exist:
-    term_index duplicated_variable_index{term_vector.size()};
+    term_idx duplicated_variable_index{term_vector.size()};
 
     int new_version =
-        ++variable_version_vector[original_variable.identifier.raw()];
+        ++variable_version_vector[original_variable.identifier];
 
     prolog_var duplicated_variable =
         {original_variable.identifier, new_version};
@@ -228,19 +228,19 @@ void unification_environment::add_clauses(std::vector<node>& nodes) {
     std::ranges::sort(clause_vector, std::less{}, projection);
 
     // Create flat table instead of hash-map:
-    identifier_clause_map.assign(identifier_vector.size(),
-                                 {clause_index{0}, clause_index{0}});
+    identifier_clause_map = strong_vector<name_idx, std::pair<clause_idx, clause_idx>>(
+        identifier_vector.size(), std::pair{clause_idx{0}, clause_idx{0}});
 
-    identifier_index current_id = identifier_index::invalid();
-    clause_index start_index{0};
+    name_idx current_id = name_idx::invalid();
+    clause_idx start_index{0};
 
-    for (clause_index n{0}; n < clause_index{clause_vector.size()}; ++n) {
-        identifier_index id = projection(clause_vector[n.raw()]);
+    for (clause_idx n{0}; n < clause_idx{clause_vector.size()}; ++n) {
+        name_idx id = projection(clause_vector[n]);
 
         if (id != current_id) {
             // close previous range
-            if (current_id != identifier_index::invalid()) {
-                identifier_clause_map[current_id.raw()] = {start_index, n};
+            if (current_id != name_idx::invalid()) {
+                identifier_clause_map[current_id] = {start_index, n};
             }
 
             // start new range
@@ -250,24 +250,24 @@ void unification_environment::add_clauses(std::vector<node>& nodes) {
     }
 
     // close final range
-    if (current_id != identifier_index::invalid()) {
-        identifier_clause_map[current_id.raw()] =
-            {start_index, clause_index{clause_vector.size()}};
+    if (current_id != name_idx::invalid()) {
+        identifier_clause_map[current_id] =
+            {start_index, clause_idx{clause_vector.size()}};
     }
 
-    variable_bindings =
-        std::vector(variable_identifier_vector.size(), term_index::invalid());
+    variable_bindings = strong_vector<var_name_idx, term_idx>
+    (variable_identifier_vector.size(), term_idx::invalid());
 
     dirty_indices =
         std::vector<size_t>(variable_identifier_vector.size());
 }
 
 
-term_index unification_environment::add_structure(node& node_instance) {
+term_idx unification_environment::add_structure(node& node_instance) {
     if (node_instance.type == node_type::GOAL)
         return add_node(node_instance.children[0]);
 
-    identifier_index id{};
+    name_idx id{};
 
     switch (node_instance.type) {
         using enum node_type;
@@ -300,21 +300,21 @@ term_index unification_environment::add_structure(node& node_instance) {
         s[i] = add_node(node_instance.children[i]);
     }
 
-    term_index structure_index{term_vector.size()};
+    term_idx structure_index{term_vector.size()};
     term_vector.emplace_back(prolog_term_type::STRUCTURE);
-    term_vector[structure_index.raw()].structure() = std::move(s);
+    term_vector[structure_index].structure() = std::move(s);
     return structure_index;
 }
 
-term_index unification_environment::add_variable(std::string& variable_name) {
-    identifier_index variable_name_index =
+term_idx unification_environment::add_variable(std::string& variable_name) {
+    var_name_idx variable_name_index =
         add_variable_identifier(variable_name);
 
     if (name_variable_map.contains(variable_name) && variable_name != "_") {
         return name_variable_map[variable_name];
     }
     // Otherwise, this name is not yet mapped, or is anonymous:
-    term_index variable_index{term_vector.size()};
+    term_idx variable_index{term_vector.size()};
 
     prolog_var variable{variable_name_index};
     term_vector.emplace_back(variable);
@@ -327,33 +327,33 @@ term_index unification_environment::add_variable(std::string& variable_name) {
     return variable_index;
 }
 
-term_index unification_environment::add_integer(int integer) {
+term_idx unification_environment::add_integer(int integer) {
     term_vector.emplace_back(integer);
-    return term_index{term_vector.size() - 1};
+    return term_idx{term_vector.size() - 1};
 }
 
-identifier_index unification_environment::add_identifier(
+name_idx unification_environment::add_identifier(
     const std::string& name) {
-    identifier_index index{};
+    name_idx index{};
     auto it = identifier_map.find(name);
     if (it != identifier_map.end()) {
         index = it->second;
     } else {
-        index = identifier_index{identifier_vector.size()};
+        index = name_idx{identifier_vector.size()};
         identifier_vector.push_back(name);
         identifier_map[name] = index;
     }
     return index;
 }
 
-identifier_index unification_environment::add_variable_identifier(
+var_name_idx unification_environment::add_variable_identifier(
     const std::string& variable_name) {
-    identifier_index index{};
+    var_name_idx index{};
     auto it = variable_identifier_map.find(variable_name);
     if (it != variable_identifier_map.end()) {
         index = it->second;
     } else {
-        index = identifier_index{variable_identifier_vector.size()};
+        index = var_name_idx{variable_identifier_vector.size()};
         variable_identifier_vector.push_back(variable_name);
         variable_version_vector.push_back(0);
         variable_identifier_map[variable_name] = index;
@@ -362,8 +362,8 @@ identifier_index unification_environment::add_variable_identifier(
 }
 
 
-term_index unification_environment::resolve_bound_variable(
-    term_index variable_index) {
+term_idx unification_environment::resolve_bound_variable(
+    term_idx variable_index) {
 
     while (get_term(variable_index).is_bound_variable()) {
         variable_index = get_var(variable_index).index;
@@ -373,15 +373,15 @@ term_index unification_environment::resolve_bound_variable(
 }
 
 
-bool unification_environment::unify(term_index i, term_index j) {
-    trail_index saved_trail{trail.size()};
+bool unification_environment::unify(term_idx i, term_idx j) {
+    trail_idx saved_trail{trail.size()};
 
     // If a variable is bound, you can keep going deeper:
     i = resolve_bound_variable(i);
     j = resolve_bound_variable(j);
 
-    prolog_term& i_term = term_vector[i.raw()];
-    prolog_term& j_term = term_vector[j.raw()];
+    prolog_term& i_term = term_vector[i];
+    prolog_term& j_term = term_vector[j];
 
     // Structure unification:
     if (i_term.is_ground() && j_term.is_ground()) {
@@ -409,9 +409,9 @@ bool unification_environment::unify(term_index i, term_index j) {
     return true;
 }
 
-bool unification_environment::unify_ground(term_index i, term_index j) {
-    prolog_term& i_term = term_vector[i.raw()];
-    prolog_term& j_term = term_vector[j.raw()];
+bool unification_environment::unify_ground(term_idx i, term_idx j) {
+    prolog_term& i_term = term_vector[i];
+    prolog_term& j_term = term_vector[j];
 
     if (i_term.type != j_term.type)
         return false;
@@ -423,8 +423,8 @@ bool unification_environment::unify_ground(term_index i, term_index j) {
     if (i_structure.index != j_structure.index) {
 #ifdef UNIFICATION_DEBUG
         std::cout <<
-            "Identifiers: " << identifier_vector[i_structure.index.raw()]
-            << ", " << identifier_vector[j_structure.index.raw()] <<
+            "Identifiers: " << identifier_vector[i_structure.index]
+            << ", " << identifier_vector[j_structure.index] <<
             " do not match.\n";
 #endif
         return false;
@@ -448,11 +448,11 @@ bool unification_environment::unify_ground(term_index i, term_index j) {
 
 // unify_unbound_variables(i, j) binds i, leaves j free
 void unification_environment::unify_unbound_variables(
-    term_index i, term_index j) {
+    term_idx i, term_idx j) {
     // If the variables are the same, do nothing:
     if (i == j)
         return;
-    prolog_var& variable = term_vector[i.raw()].variable();
+    prolog_var& variable = term_vector[i].variable();
     variable.type = prolog_var_type::BOUND;
     variable.index = j;
     trail.push_back(i);
@@ -460,20 +460,20 @@ void unification_environment::unify_unbound_variables(
 
 // unify_unbound_variable_term(i, j) binds i to the term j
 void unification_environment::unify_unbound_variable_ground(
-    term_index i, term_index j) {
-    prolog_var& variable = term_vector[i.raw()].variable();
+    term_idx i, term_idx j) {
+    prolog_var& variable = term_vector[i].variable();
     variable.type = prolog_var_type::BOUND;
     variable.index = j;
     trail.push_back(i);
 }
 
-void unification_environment::unwind_trail(trail_index i) {
+void unification_environment::unwind_trail(trail_idx i) {
     if (trail.empty())
         return;
 
     for (size_t j = trail.size(); j-- > i.raw();) {
-        term_index variable_index = trail[j];
-        term_vector[variable_index.raw()].variable().type =
+        term_idx variable_index = trail[trail_idx{j}];
+        term_vector[variable_index].variable().type =
             prolog_var_type::UNBOUND;
     }
 
@@ -481,7 +481,7 @@ void unification_environment::unwind_trail(trail_index i) {
                 trail.end());
 }
 
-void unification_environment::unwind_term_vector(term_index i) {
+void unification_environment::unwind_term_vector(term_idx i) {
     if (term_vector.empty())
         return;
     term_vector.erase(
@@ -489,7 +489,7 @@ void unification_environment::unwind_term_vector(term_index i) {
         term_vector.end());
 }
 
-void unification_environment::unwind_clause_vector(clause_index i) {
+void unification_environment::unwind_clause_vector(clause_idx i) {
     if (clause_vector.empty())
         return;
     clause_vector.erase(
@@ -512,8 +512,8 @@ void unification_environment::test_unification() {
     parser.reset(lexer.run());
     node n2 = parser.term();
 
-    term_index i1 = add_node(n1);
-    term_index i2 = add_node(n2);
+    term_idx i1 = add_node(n1);
+    term_idx i2 = add_node(n2);
 
     bool success = unify(i1, i2);
 
@@ -524,8 +524,8 @@ void unification_environment::test_unification() {
 
     variable_name_map.clear();
     name_variable_map.clear();
-    unwind_trail(trail_index{0});
-    unwind_term_vector(term_index{0});
+    unwind_trail(trail_idx{0});
+    unwind_term_vector(term_idx{0});
 }
 
 void unification_environment::test_clauses(const std::string& path) {
@@ -551,9 +551,9 @@ void unification_environment::test_duplication(const std::string& path) {
 
     // Create one copy of each clause, and add it to the set of clauses:
 
-    clause_index n{clause_vector.size()};
+    clause_idx n{clause_vector.size()};
 
-    for (clause_index i{0}; i < n; ++i) {
+    for (clause_idx i{0}; i < n; ++i) {
         duplicate_clause(i);
     }
 
@@ -561,7 +561,7 @@ void unification_environment::test_duplication(const std::string& path) {
 }
 
 
-void unification_environment::log_term(term_index i, int depth) {
+void unification_environment::log_term(term_idx i, int depth) {
     if (depth == 0) {
         std::cout << "...";
         return;
@@ -569,7 +569,7 @@ void unification_environment::log_term(term_index i, int depth) {
 
     i = resolve_bound_variable(i);
 
-    switch (term_vector[i.raw()].type) {
+    switch (term_vector[i].type) {
         using enum prolog_term_type;
     case VARIABLE:
         log_variable(i);
@@ -583,15 +583,15 @@ void unification_environment::log_term(term_index i, int depth) {
     }
 }
 
-void unification_environment::log_bracketed_term(term_index i, int depth) {
+void unification_environment::log_bracketed_term(term_idx i, int depth) {
     std::cout << '(';
     log_term(i, depth);
     std::cout << ')';
 }
 
 
-bool unification_environment::is_compound_term(term_index i) {
-    if (!term_vector[i.raw()].is_structure())
+bool unification_environment::is_compound_term(term_idx i) {
+    if (!term_vector[i].is_structure())
         return false;
     switch (get_struct(i).index.raw()) {
     case get_reserved_identifier_index(",").raw():
@@ -602,8 +602,8 @@ bool unification_environment::is_compound_term(term_index i) {
     }
 }
 
-bool unification_environment::is_infix_term(term_index i) {
-    if (!term_vector[i.raw()].is_structure())
+bool unification_environment::is_infix_term(term_idx i) {
+    if (!term_vector[i].is_structure())
         return false;
     switch (get_struct(i).index.raw()) {
     case get_reserved_identifier_index("+").raw():
@@ -631,10 +631,10 @@ case get_reserved_identifier_index(s).raw(): log_compound_term(structure_index, 
 #define INFIX_CASE_STATEMENT(s)\
 case get_reserved_identifier_index(s).raw(): log_infix_term(structure_index, depth, s); return
 
-void unification_environment::log_structure(term_index structure_index,
+void unification_environment::log_structure(term_idx structure_index,
                                             int depth) {
     prolog_struct& structure = get_struct(structure_index);
-    identifier_index id = structure.index;
+    name_idx id = structure.index;
 
     switch (id.raw()) {
     case get_reserved_identifier_index(".").raw():
@@ -656,7 +656,7 @@ void unification_environment::log_structure(term_index structure_index,
 
     }
 
-    std::cout << identifier_vector[id.raw()];
+    std::cout << identifier_vector[id];
 
     if (structure.num_children > 0) {
         std::cout << '(';
@@ -669,7 +669,7 @@ void unification_environment::log_structure(term_index structure_index,
     }
 }
 
-void unification_environment::log_list(term_index list_index, int depth) {
+void unification_environment::log_list(term_idx list_index, int depth) {
     prolog_struct& structure = get_struct(list_index);
     std::cout << '[';
 
@@ -686,12 +686,12 @@ void unification_environment::log_list(term_index list_index, int depth) {
     while (depth > 0) {
         depth--;
 
-        term_index next_index = (*current_structure)[1];
+        term_idx next_index = (*current_structure)[1];
         next_index = resolve_bound_variable(next_index);
 
-        if (term_vector[next_index.raw()].is_structure()) {
-            current_structure = &term_vector[next_index.raw()].structure();
-            std::string& id = identifier_vector[current_structure->index.raw()];
+        if (term_vector[next_index].is_structure()) {
+            current_structure = &term_vector[next_index].structure();
+            std::string& id = identifier_vector[current_structure->index];
 
             if (id == "[]") {
                 std::cout << ']';
@@ -720,16 +720,11 @@ void unification_environment::log_list(term_index list_index, int depth) {
 }
 
 
-void unification_environment::log_variable(term_index variable_index) {
-    prolog_var& variable = term_vector[variable_index.raw()].variable();
+void unification_environment::log_variable(term_idx variable_index) {
+    prolog_var& variable = term_vector[variable_index].variable();
 
-    if (variable.identifier == get_reserved_identifier_index("_")) {
-        std::cout << "V";
-    } else {
-        std::cout << variable_identifier_vector[variable.identifier.raw()];
-    }
-
-    std::cout << subscript_number(variable.version);
+    // TODO: Handle anonymous variable '_' properly
+    std::cout << variable_identifier_vector[variable.identifier] << subscript_number(variable.version);
 }
 
 void unification_environment::log_variables() {
@@ -741,24 +736,24 @@ void unification_environment::log_variables() {
 }
 
 void unification_environment::log_clauses() {
-    for (clause_index i{0}; i < clause_index{clause_vector.size()}; ++i) {
+    for (clause_idx i{0}; i < clause_idx{clause_vector.size()}; ++i) {
         log_clause(i, max_logging_depth);
         std::cout << '\n';
     }
 }
 
 
-void unification_environment::log_clause(clause_index idx, int depth) {
-    prolog_clause& clause = clause_vector[idx.raw()];
+void unification_environment::log_clause(clause_idx idx, int depth) {
+    prolog_clause& clause = clause_vector[idx];
     log_term(clause.head, depth);
-    if (clause.body != term_index::invalid()) {
+    if (clause.body != term_idx::invalid()) {
         std::cout << " :- ";
         log_term(clause.body, depth);
     }
     std::cout << '.';
 }
 
-void unification_environment::log_compound_term(term_index i, int depth,
+void unification_environment::log_compound_term(term_idx i, int depth,
                                                 char seperator) {
     prolog_struct& structure = get_struct(i);
     if (is_compound_term(structure[0])) {
@@ -777,12 +772,12 @@ void unification_environment::log_compound_term(term_index i, int depth,
     }
 }
 
-void unification_environment::log_infix_term(term_index i, int depth,
+void unification_environment::log_infix_term(term_idx i, int depth,
                                              const std::string&
                                              infix_operator) {
     prolog_struct& structure = get_struct(i);
-    term_index left_index = structure[0];
-    term_index right_index = structure[1];
+    term_idx left_index = structure[0];
+    term_idx right_index = structure[1];
 
     if (is_infix_term(left_index) || is_compound_term(left_index)) {
         log_bracketed_term(left_index, depth - 1);
@@ -799,8 +794,8 @@ void unification_environment::log_infix_term(term_index i, int depth,
     }
 }
 
-term_index unification_environment::evaluate_and_create_arithmetic_term(
-    term_index i) {
+term_idx unification_environment::evaluate_and_create_arithmetic_term(
+    term_idx i) {
     return add_integer(evaluate_arithmetic_term(i));
 }
 
@@ -811,9 +806,9 @@ case get_reserved_identifier_index(#op).raw(): {                    \
     return left op right;                                           \
 }
 
-int unification_environment::evaluate_arithmetic_term(term_index i) {
+int unification_environment::evaluate_arithmetic_term(term_idx i) {
     i = resolve_bound_variable(i);
-    prolog_term& term = term_vector[i.raw()];
+    prolog_term& term = term_vector[i];
     if (term.is_integer())
         return term.integer();
     if (term.is_structure()) {
@@ -825,7 +820,7 @@ int unification_environment::evaluate_arithmetic_term(term_index i) {
         default: {
             throw formatted_error(
                 "ERROR: '{}' is not a valid arithmetic function",
-                identifier_vector[structure.index.raw()]);
+                identifier_vector[structure.index]);
         }
 
         }
@@ -838,7 +833,7 @@ int unification_environment::evaluate_arithmetic_term(term_index i) {
 
 
 void unification_environment::run_interpreter() {
-    term_index base_term{term_vector.size()};
+    term_idx base_term{term_vector.size()};
     for (;;) {
         unwind_term_vector(base_term);
         name_variable_map.clear();
@@ -853,7 +848,7 @@ void unification_environment::run_interpreter() {
             parser parser(lexer.run(), lexer);
             node n = parser.query();
 
-            term_index goal_index = add_node(n);
+            term_idx goal_index = add_node(n);
 
             frame_solver solver{*this};
             solver.solve(goal_index);
@@ -876,34 +871,33 @@ void unification_environment::run_interpreter() {
 
 prolog_timestamp unification_environment::get_timestamp() {
     return {
-        term_index{term_vector.size()},
-        clause_index{clause_vector.size()},
-        trail_index{trail.size()}
+        term_idx{term_vector.size()},
+        clause_idx{clause_vector.size()},
+        trail_idx{trail.size()}
     };
 }
 
 void unification_environment::apply_timestamp(prolog_timestamp timestamp) {
-    unwind_trail(timestamp.trail_index_);
-    unwind_clause_vector(timestamp.clause_index_);
-    unwind_term_vector(timestamp.term_index_);
+    unwind_trail(timestamp.trail);
+    unwind_clause_vector(timestamp.clause);
+    unwind_term_vector(timestamp.term);
 }
 
-std::vector<term_index>& unification_environment::get_trail() {
+trail_vec& unification_environment::get_trail() {
     return trail;
 }
 
-
-const std::vector<std::string>&
-unification_environment::get_identifier_vector() const {
+const name_vec&
+unification_environment::get_names() const {
     return identifier_vector;
 }
 
-const std::vector<std::string>&
-unification_environment::get_variable_identifier_vector() const {
+const var_name_vec&
+unification_environment::get_var_names() const {
     return variable_identifier_vector;
 }
 
-prolog_term& unification_environment::get_term_at(size_t i) {
+prolog_term& unification_environment::get_term_at(term_idx i) {
     return term_vector[i];
 }
 
@@ -911,13 +905,13 @@ size_t unification_environment::get_term_count() const {
     return term_vector.size();
 }
 
-const std::unordered_map<std::string, term_index>&
+const std::unordered_map<std::string, term_idx>&
 unification_environment::get_name_variable_map() const {
     return name_variable_map;
 }
 
-const prolog_clause& unification_environment::get_clause_at(clause_index idx) const {
-    return clause_vector[idx.raw()];
+const prolog_clause& unification_environment::get_clause_at(clause_idx idx) const {
+    return clause_vector[idx];
 }
 
 size_t unification_environment::get_clause_count() const {
