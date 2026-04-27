@@ -3,65 +3,66 @@
 
 #include "frame_solver_types.h"
 #include "unification_environment.h"
+#include "strong_indices.h"
 
 // #define FRAME_SOLVER_DEBUG
+
+using choice_vec =
+    strong_vector<choice_idx, frame_solver_types::choice_point>;
+
+using frame_vec =
+    strong_vector<frame_idx, frame_solver_types::frame>;
 
 class frame_solver {
 public:
     using application_result = frame_solver_types::application_result;
     using continuation_state = frame_solver_types::continuation_state;
     using frame = frame_solver_types::frame;
-    using decision_point = frame_solver_types::decision_point;
-
-    using c_idx = clause_index;
-    using f_idx = frame_index;
-    using fh_idx = frame_history_index;
-    using t_idx = term_index;
-    using cs = continuation_state;
+    using choice_point = frame_solver_types::choice_point;
 
     explicit
     frame_solver(unification_environment& environment): env(environment),
         found_all(false) {
     }
 
-    void solve(term_index goal_index);
+    void solve(term_idx goal_index);
     frame_solver& operator++();
     bool operator*() const;
 
     frame_solver_types::step_result step();
 
-    application_result apply_clause(c_idx clause_idx, t_idx head_index,
-                                    f_idx parent, fh_idx cut_point,
-                                    cs parent_continuation);
+    application_result apply_clause(clause_idx clause_index, term_idx head_index,
+                                    frame_idx parent, choice_idx cut_point,
+                                    continuation_state parent_continuation);
 
-    application_result apply_clause_tail(c_idx clause_idx, t_idx head_index,
+    application_result apply_clause_tail(clause_idx clause_index, term_idx head_index,
                                          frame& current_frame);
 
     void unwind();
     bool backtrack();
-    std::vector<decision_point>& get_history();
-    std::vector<frame>& get_stack();
+    choice_vec& get_choices();
+    frame_vec& get_stack();
     void log_frame_stack();
-    void log_history();
+    void log_choices();
 
     [[nodiscard]] bool at_end() const;
-    [[nodiscard]] frame_index get_stack_pointer() const { return stack_index; }
+    [[nodiscard]] frame_idx get_stack_pointer() const { return stack_index; }
 
 private:
     void add_frame(
-        t_idx index, f_idx parent = f_idx::invalid(),
-        fh_idx cut_point = fh_idx::invalid(),
-        cs parent_continuation = {});
+        term_idx index, frame_idx parent = frame_idx::invalid(),
+        choice_idx cut_point = choice_idx::invalid(),
+        continuation_state parent_continuation = {});
 
     [[nodiscard]] frame create_frame(
-        t_idx index, f_idx parent = f_idx::invalid(),
-        fh_idx cut_point = fh_idx::invalid(),
-        cs parent_continuation = {}) const;
+        term_idx index, frame_idx parent = frame_idx::invalid(),
+        choice_idx cut_point = choice_idx::invalid(),
+        continuation_state parent_continuation = {}) const;
 
 
     bool restore_decision_point();
 
-    frame_index top_index();
+    frame_idx top_index();
 
     void log_frame(frame& frame_);
 
@@ -75,11 +76,11 @@ private:
 
 
     unification_environment& env;
-    std::vector<decision_point> history;
-    std::vector<frame> stack;
+    choice_vec choices;
+    frame_vec stack;
     bool found_all;
 
-    frame_index stack_index{0};
+    frame_idx stack_index{0};
     bool solved = false;
 };
 

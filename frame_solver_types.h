@@ -3,15 +3,16 @@
 
 #include "helper.h"
 #include "prolog_types.h"
+#include "strong_indices.h"
 
-struct frame_index_base {
+struct frame_tag {
 };
 
-struct frame_history_index_base {
+struct choice_tag {
 };
 
-using frame_index = strong_index<frame_index_base>;
-using frame_history_index = strong_index<frame_history_index_base>;
+using frame_idx = strong_index<frame_tag>;
+using choice_idx = strong_index<choice_tag>;
 
 namespace frame_solver_types {
 enum class frame_type {
@@ -34,13 +35,13 @@ struct continuation_state {
 struct frame {
     frame():
         type(frame_type::HALT),
-        index(term_index::invalid()),
-        parent(frame_index::invalid()),
-        cut_point(frame_history_index::invalid()) {
+        index(term_idx::invalid()),
+        parent(frame_idx::invalid()),
+        cut_point(choice_idx::invalid()) {
     }
 
-    frame(frame_type type, term_index index, frame_index parent,
-          frame_history_index cut_point,
+    frame(frame_type type, term_idx index, frame_idx parent,
+          choice_idx cut_point,
           continuation_state parent_continuation):
         type(type),
         index(index),
@@ -50,23 +51,23 @@ struct frame {
     }
 
     frame_type type;
-    term_index index;
-    frame_index parent;
+    term_idx index;
+    frame_idx parent;
 
     size_t decision_index = 0;
-    clause_index clause_lower_bound = clause_index::invalid();
-    clause_index clause_upper_bound = clause_index::invalid();
-    clause_index original_clause = clause_index::invalid();
+    clause_idx clause_lower_bound = clause_idx::invalid();
+    clause_idx clause_upper_bound = clause_idx::invalid();
+    clause_idx original_clause = clause_idx::invalid();
 
-    frame_history_index cut_point;
+    choice_idx cut_point;
 
     continuation_state continuation;
     continuation_state parent_continuation;
 };
 
-struct decision_point {
-    decision_point(prolog_timestamp timestamp,
-                   frame_index stack_index,
+struct choice_point {
+    choice_point(prolog_timestamp timestamp,
+                   frame_idx stack_index,
                    size_t stack_size,
                    size_t decision_index):
 
@@ -77,7 +78,7 @@ struct decision_point {
     }
 
     prolog_timestamp timestamp;
-    frame_index stack_index;
+    frame_idx stack_index;
     size_t stack_size;
     size_t decision_index;
 };
@@ -96,11 +97,11 @@ struct step_result {
     explicit step_result(step_type type):
     type(type), data(std::monostate{}) {}
 
-    explicit step_result(step_type type, clause_index index):
+    explicit step_result(step_type type, clause_idx index):
     type(type), data(index) {}
 
     step_type type;
-    std::variant<std::monostate, clause_index> data;
+    std::variant<std::monostate, clause_idx> data;
 };
 
 inline std::string step_type_to_string_(step_type type) {

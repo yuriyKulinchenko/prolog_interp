@@ -3,16 +3,16 @@
 #include <utility>
 // prolog_variable
 
-prolog_var::prolog_var(identifier_index identifier):
+prolog_var::prolog_var(var_name_idx identifier):
     identifier(identifier) {
 }
 
-prolog_var::prolog_var(identifier_index identifier, int version):
+prolog_var::prolog_var(var_name_idx identifier, int version):
     identifier(identifier), version(version) {
 }
 
-prolog_var::prolog_var(prolog_var_type type, term_index index,
-                       identifier_index identifier, int version)
+prolog_var::prolog_var(prolog_var_type type, term_idx index,
+                       var_name_idx identifier, int version)
     : type(type),
       index(index),
       identifier(identifier),
@@ -28,15 +28,15 @@ prolog_struct::prolog_struct(): num_children(0) {
 prolog_struct::prolog_struct(size_t num_children):
     num_children(num_children),
     children(num_children > inline_capacity
-                 ? new term_index[num_children]
+                 ? new term_idx[num_children]
                  : nullptr) {
 }
 
-prolog_struct::prolog_struct(size_t num_children, identifier_index index):
+prolog_struct::prolog_struct(size_t num_children, name_idx index):
     index(index),
     num_children(num_children),
     children(num_children > inline_capacity
-                 ? new term_index[num_children]
+                 ? new term_idx[num_children]
                  : nullptr) {
 }
 
@@ -46,33 +46,33 @@ prolog_struct::~prolog_struct() {
     }
 }
 
-term_index& prolog_struct::operator[](size_t i) {
+term_idx& prolog_struct::operator[](size_t i) {
     if (num_children > inline_capacity) {
         return children[i];
     }
     return inline_children[i];
 }
 
-const term_index& prolog_struct::operator[](size_t i) const {
+const term_idx& prolog_struct::operator[](size_t i) const {
     if (num_children > inline_capacity) {
         return children[i];
     }
     return inline_children[i];
 }
 
-term_index& prolog_struct::at(size_t i) {
+term_idx& prolog_struct::at(size_t i) {
     return operator[](i);
 }
 
-const term_index& prolog_struct::at(size_t i) const {
+const term_idx& prolog_struct::at(size_t i) const {
     return operator[](i);
 }
 
-term_index prolog_struct::left() {
+term_idx prolog_struct::left() {
     return inline_children[0];
 }
 
-term_index prolog_struct::right() {
+term_idx prolog_struct::right() {
     return inline_children[1];
 }
 
@@ -92,7 +92,7 @@ prolog_struct::prolog_struct(prolog_struct&& other) noexcept
 prolog_struct::prolog_struct(const prolog_struct& other)
     : index(other.index), num_children(other.num_children) {
     if (num_children > inline_capacity) {
-        children = new term_index[num_children];
+        children = new term_idx[num_children];
         for (size_t i = 0; i < num_children; i++) {
             children[i] = other.children[i];
         }
@@ -113,7 +113,7 @@ prolog_struct& prolog_struct::operator=(const prolog_struct& other) {
         num_children = other.num_children;
 
         if (num_children > inline_capacity) {
-            children = new term_index[num_children];
+            children = new term_idx[num_children];
             for (size_t i = 0; i < num_children; i++) {
                 children[i] = other.children[i];
             }

@@ -16,8 +16,8 @@ void test_step(unification_environment& environment, lexer_parser& frontend) {
     solver.solve(environment.add_node(query));
     for (int i = 1;; i++) {
         std::println("STEP NUMBER: {}", i);
-        step_type res = solver.step();
-        std::println("STEP TYPE: {}", step_type_to_string_(res));
+        step_result res = solver.step();
+        std::println("STEP TYPE: {}", step_type_to_string_(res.type));
     }
 }
 
