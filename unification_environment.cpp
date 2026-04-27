@@ -118,6 +118,7 @@ clause_idx unification_environment::add_clause(node& node_instance) {
 strong_vector<var_name_idx, term_idx> variable_bindings;
 std::vector<size_t> dirty_indices;
 size_t dirty_indices_length;
+int anonymous_var_count = 0;
 
 void add_variable_binding(var_name_idx original, term_idx duplicate) {
     variable_bindings[original] = duplicate;
@@ -194,24 +195,24 @@ term_idx unification_environment::duplicate_structure(term_idx index) {
 term_idx unification_environment::duplicate_variable(term_idx index) {
     prolog_var& original_variable = term_vector[index].variable();
 
-    // If mapping exists:
-    if (variable_bindings[original_variable.identifier] !=
-        term_idx::invalid()) {
-        return variable_bindings[original_variable.identifier];
+    bool is_anonymous_variable = original_variable.identifier == var_name_idx::invalid();
+
+    if (!is_anonymous_variable) {
+        if (variable_bindings[original_variable.identifier] != term_idx::invalid())
+            return variable_bindings[original_variable.identifier];
     }
 
-    // If mapping does not exist:
     term_idx duplicated_variable_index{term_vector.size()};
 
-    int new_version =
-        ++variable_version_vector[original_variable.identifier];
+    int new_version = is_anonymous_variable ?
+    ++anonymous_var_count :
+    ++variable_version_vector[original_variable.identifier];
 
-    prolog_var duplicated_variable =
-        {original_variable.identifier, new_version};
-    term_vector.emplace_back(duplicated_variable);
+    term_vector.emplace_back(prolog_var{original_variable.identifier, new_version});
 
-    add_variable_binding(original_variable.identifier,
-                         duplicated_variable_index);
+    if (!is_anonymous_variable)
+        add_variable_binding(original_variable.identifier, duplicated_variable_index);
+
     return duplicated_variable_index;
 }
 
@@ -348,6 +349,7 @@ name_idx unification_environment::add_identifier(
 
 var_name_idx unification_environment::add_variable_identifier(
     const std::string& variable_name) {
+    if (variable_name == "_") return var_name_idx::invalid();
     var_name_idx index{};
     auto it = variable_identifier_map.find(variable_name);
     if (it != variable_identifier_map.end()) {
