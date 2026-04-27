@@ -69,6 +69,9 @@ public:
     [[nodiscard]] const std::vector<std::string>&
     get_variable_identifier_vector() const;
 
+    [[nodiscard]] const prolog_clause& get_clause_at(clause_index idx) const;
+    [[nodiscard]] size_t get_clause_count() const;
+
     void log_term(term_index i, int depth = max_logging_depth);
     void log_bracketed_term(term_index i, int depth = max_logging_depth);
     void log_variables();

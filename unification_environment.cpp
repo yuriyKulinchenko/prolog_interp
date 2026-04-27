@@ -101,7 +101,7 @@ clause_index unification_environment::add_clause(node& node_instance) {
             "ERROR: Clause head expected to be Term, received {}", type_string);
     }
 
-    clause_vector.emplace_back(add_node(node_instance.children[0]));
+    clause_vector.emplace_back(add_node(node_instance.children[0]), node_instance.range);
     clause_index idx{clause_vector.size() - 1};
     if (node_instance.children.size() == 2) {
         // The body is also present:
@@ -846,35 +846,31 @@ void unification_environment::run_interpreter() {
         std::cout << "?- ";
         std::string s;
         std::getline(std::cin, s);
-        if (s.empty())
-            continue;
-
-        node n;
+        if (s.empty()) continue;
 
         try {
             lexer lexer(std::move(s));
             parser parser(lexer.run(), lexer);
-            n = parser.query();
+            node n = parser.query();
+
+            term_index goal_index = add_node(n);
+
+            frame_solver solver{*this};
+            solver.solve(goal_index);
+            ++solver;
+
+            while (!solver.at_end()) {
+                std::println("{}true{}", GREEN, RESET);
+                log_variables();
+                std::string command;
+                std::getline(std::cin, command);
+                ++solver;
+            }
+
+            std::println("{}false{}", RED, RESET);
         } catch (std::logic_error& e) {
             std::println("{}{}{}", RED, e.what(), RESET);
-            continue;
         }
-
-        term_index goal_index = add_node(n);
-
-        frame_solver solver{*this};
-        solver.solve(goal_index);
-        ++solver;
-
-        while (!solver.at_end()) {
-            std::println("{}true{}", GREEN, RESET);
-            log_variables();
-            std::string command;
-            std::getline(std::cin, command);
-            ++solver;
-        }
-
-        std::println("{}false{}", RED, RESET);
     }
 }
 
@@ -918,4 +914,12 @@ size_t unification_environment::get_term_count() const {
 const std::unordered_map<std::string, term_index>&
 unification_environment::get_name_variable_map() const {
     return name_variable_map;
+}
+
+const prolog_clause& unification_environment::get_clause_at(clause_index idx) const {
+    return clause_vector[idx.raw()];
+}
+
+size_t unification_environment::get_clause_count() const {
+    return clause_vector.size();
 }

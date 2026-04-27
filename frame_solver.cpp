@@ -154,35 +154,43 @@ frame_solver& frame_solver::operator++() {
     return *this;
 }
 
-step_type frame_solver::step() {
+step_result frame_solver::step() {
     using enum step_type;
     if (invalid(stack_index)) {
-        return backtrack() ? BACKTRACK : FINISH;
+        return backtrack() ? step_result{BACKTRACK} : step_result{FINISH};
     }
 
     frame& current_frame = stack[stack_index.raw()];
 
     switch (current_frame.type) {
     case frame_type::RULE: {
+        frame_index current_frame_index = stack_index;
+
         if (!handle_rule(current_frame)) {
-            return backtrack() ? BACKTRACK : FINISH;
+            return backtrack() ? step_result{BACKTRACK} : step_result{FINISH};
         }
-        return invalid(stack_index) ? SUCCESS_RULE : INVOKE_RULE;
+
+        clause_index matched = stack[current_frame_index.raw()].original_clause;
+        if (invalid(stack_index)) {
+            return step_result {SUCCESS_RULE, matched};
+        } else {
+            return step_result {INVOKE_RULE, matched};
+        }
     }
 
     case frame_type::CUT: {
         handle_cut(current_frame);
-        return invalid(stack_index) ? SUCCESS_CUT : CUT;
+        return invalid(stack_index) ? step_result {SUCCESS_CUT} : step_result{CUT};
     }
 
     case frame_type::CONJUNCTION: {
         handle_conjunction(current_frame);
-        return INVOKE_CONJUNCTION;
+        return step_result{INVOKE_CONJUNCTION};
     }
 
     case frame_type::DISJUNCTION: {
         handle_disjunction(current_frame);
-        return INVOKE_DISJUNCTION;
+        return step_result{INVOKE_DISJUNCTION};
     }
 
     default:
@@ -265,8 +273,17 @@ bool frame_solver::handle_rule(frame& current_frame) {
             return false;
         }
 
-        auto [lower_bound, upper_bound] =
-            env.identifier_clause_map[structure.index.raw()];
+        // This lookup is not always necessary:
+
+        if (invalid(current_frame.clause_lower_bound)) {
+            auto [lower_bound, upper_bound] =
+             env.identifier_clause_map[structure.index.raw()];
+            current_frame.clause_lower_bound = lower_bound;
+            current_frame.clause_upper_bound = upper_bound;
+        }
+
+        clause_index lower_bound = current_frame.clause_lower_bound;
+        clause_index upper_bound = current_frame.clause_upper_bound;
 
         if (upper_bound == clause_index{0}) {
             return false;
@@ -281,6 +298,9 @@ bool frame_solver::handle_rule(frame& current_frame) {
         // Tail optimization:
         if (decision_range == 1) {
             result = apply_clause_tail(lower_bound, head_index, current_frame);
+            if (result == application_result::FACT) {
+                current_frame.original_clause = lower_bound;
+            }
             return handle_application_result(result);
         }
 
@@ -293,6 +313,11 @@ bool frame_solver::handle_rule(frame& current_frame) {
                                   continuation);
 
             if (is_success(result)) {
+                // Stamp the rule frame (by index — current_frame ref may be stale after
+                // emplace_back in apply_clause).  apply_clause already stamps the body
+                // frame for the RULE case; this also covers the FACT case where no body
+                // frame exists.
+                stack[stack_index.raw()].original_clause = clause_idx;
                 if (i + 1 < decision_range) {
                     // If possible, place a decision point:
                     history.emplace_back(
@@ -431,6 +456,7 @@ application_result frame_solver::apply_clause(
                 parent,
                 cut_point,
                 parent_continuation);
+            stack.back().original_clause = clause_idx;
             return application_result::RULE;
         }
         return application_result::FACT;
@@ -455,7 +481,7 @@ application_result frame_solver::apply_clause_tail(
                 current_frame.parent,
                 current_frame.cut_point,
                 current_frame.parent_continuation);
-
+            current_frame.original_clause = clause_idx;
             return application_result::RULE;
         }
         return application_result::FACT;

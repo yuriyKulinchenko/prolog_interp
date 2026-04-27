@@ -96,7 +96,7 @@ std::vector<token> lexer::run() {
 
         case '=': {
             if (match('<'))
-                emit_token(LESS_THAN_EQUAL);
+                emit_token(LESS_THAN_EQUAL, get_range(2));
             else
                 emit_token(EQUAL);
             break;
@@ -109,7 +109,7 @@ std::vector<token> lexer::run() {
 
         case '>': {
             if (match('='))
-                emit_token(MORE_THAN_EQUAL);
+                emit_token(MORE_THAN_EQUAL, get_range(2));
             else
                 emit_token(MORE_THAN);
             break;
@@ -118,10 +118,10 @@ std::vector<token> lexer::run() {
         case '\\': {
             switch (advance()) {
             case '=':
-                emit_token(NOT_EQUAL);
+                emit_token(NOT_EQUAL, get_range(2));
                 break;
             case '+':
-                emit_token(NOT);
+                emit_token(NOT, get_range(2));
                 break;
             default:
                 throw lexer_error("Expect '\\' to be followed by '=' or '+'");
@@ -131,7 +131,7 @@ std::vector<token> lexer::run() {
 
         case ':': {
             consume('-', "Expect '-' to follow ':' in rule operator");
-            emit_token(RULE_OPERATOR);
+            emit_token(RULE_OPERATOR, get_range(2));
             break;
         }
 
@@ -152,6 +152,7 @@ std::vector<token> lexer::run() {
 #ifdef LEXER_DEBUG
     std::cout << token_vector << '\n';
 #endif
+    emit_token(token_type::END_OF_FILE);
     return token_vector;
 }
 
@@ -228,20 +229,25 @@ bool lexer::at_end() {
     return source_code.length() == i;
 }
 
-void lexer::emit_token(token_type type, const std::string& identifier) {
-    token_vector.emplace_back(type, identifier, get_text_position());
+void lexer::emit_token(token_type type, position_range range, const std::string& identifier) {
+    token_vector.emplace_back(type, identifier, range);
 }
 
-void lexer::emit_token(token_type type, int number) {
-    token_vector.emplace_back(type, number, get_text_position());
+void lexer::emit_token(token_type type, position_range range, int number) {
+    token_vector.emplace_back(type, number, range);
 }
 
 void lexer::emit_token(token_type type) {
-    token_vector.emplace_back(type, get_text_position());
+    token_vector.emplace_back(type, get_range(1));
+}
+
+void lexer::emit_token(token_type type, position_range range) {
+    token_vector.emplace_back(type, range);
 }
 
 void lexer::emit_string() {
     int start = i;
+    text_position start_position = get_text_position();
     while (is_alphanum(peek())) {
         advance();
     }
@@ -252,7 +258,7 @@ void lexer::emit_string() {
     if (identifier == "_") {
         type = token_type::VARIABLE;
     } else if (identifier == "is") {
-        emit_token(token_type::IS);
+        emit_token(token_type::IS, position_range{start_position, get_text_position()});
         return;
     } else {
         type = is_alpha_capital(source_code[start])
@@ -260,11 +266,12 @@ void lexer::emit_string() {
                    : token_type::SYMBOL;
     }
 
-    emit_token(type, identifier);
+    emit_token(type, position_range{start_position, get_text_position()}, identifier);
 }
 
 void lexer::emit_integer() {
     int start = i;
+    text_position start_position = get_text_position();
     while (is_num(peek())) {
         advance();
     }
@@ -274,7 +281,8 @@ void lexer::emit_integer() {
     }
 
     int integer = std::stoi(source_code.substr(start, i - start));
-    emit_token(token_type::INTEGER, integer);
+
+    emit_token(token_type::INTEGER, position_range{start_position, get_text_position()}, integer);
 }
 
 std::logic_error lexer::lexer_error(const std::string& error_message) {
@@ -306,7 +314,14 @@ std::string_view lexer::fetch_line_at(int index) {
 }
 
 text_position lexer::get_text_position() const {
-    return {current_line_index, i - 1, line_number};
+    return {current_line_index, i, line_number};
+}
+
+// start inclusive, end exclusive — covers the last `range` characters consumed.
+position_range lexer::get_range(int range) const {
+    text_position start = {current_line_index, i - range, line_number};
+    text_position end = {current_line_index, i, line_number};
+    return {start, end};
 }
 
 

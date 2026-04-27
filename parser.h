@@ -89,6 +89,12 @@ private:
     bool match(token_type type);
     bool at_end();
 
+    // position_range helper functions:
+
+    position_range current_position();
+    position_range next_position();
+    position_range previous_position();
+
     std::logic_error parser_error(const std::string& error_message);
     std::logic_error parser_error(const std::string& error_message,
                                   const token& token_instance);

@@ -52,7 +52,12 @@ struct frame {
     frame_type type;
     term_index index;
     frame_index parent;
+
     size_t decision_index = 0;
+    clause_index clause_lower_bound = clause_index::invalid();
+    clause_index clause_upper_bound = clause_index::invalid();
+    clause_index original_clause = clause_index::invalid();
+
     frame_history_index cut_point;
 
     continuation_state continuation;
@@ -85,6 +90,17 @@ enum class step_type {
     FINISH, BACKTRACK, INVOKE_RULE, SUCCESS_CUT, SUCCESS_RULE,
     INVOKE_CONJUNCTION,
     INVOKE_DISJUNCTION, CUT
+};
+
+struct step_result {
+    explicit step_result(step_type type):
+    type(type), data(std::monostate{}) {}
+
+    explicit step_result(step_type type, clause_index index):
+    type(type), data(index) {}
+
+    step_type type;
+    std::variant<std::monostate, clause_index> data;
 };
 
 inline std::string step_type_to_string_(step_type type) {

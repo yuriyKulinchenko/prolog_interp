@@ -28,7 +28,7 @@ public:
     frame_solver& operator++();
     bool operator*() const;
 
-    frame_solver_types::step_type step();
+    frame_solver_types::step_result step();
 
     application_result apply_clause(c_idx clause_idx, t_idx head_index,
                                     f_idx parent, fh_idx cut_point,
@@ -53,7 +53,7 @@ private:
         fh_idx cut_point = fh_idx::invalid(),
         cs parent_continuation = {});
 
-    frame create_frame(
+    [[nodiscard]] frame create_frame(
         t_idx index, f_idx parent = f_idx::invalid(),
         fh_idx cut_point = fh_idx::invalid(),
         cs parent_continuation = {}) const;

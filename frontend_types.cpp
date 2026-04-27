@@ -2,16 +2,16 @@
 #include <utility>
 #include "frontend_types.h"
 
-bool is_identifier_token(token &token) {
+bool is_identifier_token(token& token) {
     return token.type == token_type::SYMBOL || token.type ==
            token_type::VARIABLE;
 }
 
-bool is_integral_token(token &token) {
+bool is_integral_token(token& token) {
     return token.type == token_type::INTEGER;
 }
 
-std::ostream &operator<<(std::ostream &stream, token &token) {
+std::ostream& operator<<(std::ostream& stream, token& token) {
     stream << '{' << token_type_to_string(token.type);
     if (is_identifier_token(token)) {
         stream << ", '" << token.identifier() << "'";
@@ -80,20 +80,19 @@ text_position::text_position(
 
 // token
 
-token::token(token_type type, text_position position)
-    : type(type), tagged_union(0), position(position) {
+token::token(token_type type, position_range range)
+    : type(type), tagged_union(0), range(range) {
 }
 
-token::token(token_type type, std::string identifier, text_position position)
-    : type(type), tagged_union(std::move(identifier)), position(position) {
+token::token(token_type type, std::string identifier, position_range range)
+    : type(type), tagged_union(std::move(identifier)), range(range) {
 }
 
-token::token(token_type type, int integer, text_position position)
-    : type(type), tagged_union(integer), position(position) {
+token::token(token_type type, int integer, position_range range)
+    : type(type), tagged_union(integer), range(range) {
 }
 
-
-std::string &token::identifier() {
+std::string& token::identifier() {
     return std::get<std::string>(tagged_union);
 }
 
@@ -103,31 +102,32 @@ int token::integer() {
 
 // node
 
-node::node()
-    : type(node_type::CUT), tagged_union(0) {
+node::node(const position_range& range)
+    : type(node_type::CUT), tagged_union(0), range(range) {
 }
 
-node::node(node_type type)
-    : type(type), tagged_union(0) {
+node::node(node_type type, const position_range& range)
+    : type(type), tagged_union(0), range(range) {
 }
 
-node::node(node_type type, std::string name)
-    : type(type), tagged_union(std::move(name)) {
+node::node(node_type type, std::string name, const position_range& range)
+    : type(type), tagged_union(std::move(name)), range(range) {
 }
 
-node::node(node_type type, int integer)
-    : type(type), tagged_union(integer) {
+node::node(node_type type, int integer, const position_range& range)
+    : type(type), tagged_union(integer), range(range) {
 }
 
-node::node(node_type type, std::vector<node> children)
-    : type(type), tagged_union(0), children(std::move(children)) {
+node::node(node_type type, std::vector<node> children, const position_range& range)
+    : type(type), tagged_union(0), children(std::move(children)), range(range) {
 }
 
-node::node(node_type type, std::string name, std::vector<node> children)
-    : type(type), tagged_union(std::move(name)), children(std::move(children)) {
+node::node(node_type type, std::string name, std::vector<node> children, const position_range& range)
+    : type(type), tagged_union(std::move(name)),
+    children(std::move(children)), range(range) {
 }
 
-std::string &node::name() {
+std::string& node::name() {
     return std::get<std::string>(tagged_union);
 }
 

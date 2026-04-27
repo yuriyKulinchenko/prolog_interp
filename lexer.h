@@ -27,8 +27,9 @@ private:
     bool match(char c);
     bool at_end();
 
-    void emit_token(token_type type, const std::string& identifier);
-    void emit_token(token_type type, int number);
+    void emit_token(token_type type, position_range range, const std::string& identifier);
+    void emit_token(token_type type, position_range range, int number);
+    void emit_token(token_type type, position_range range);
     void emit_token(token_type type);
 
     void emit_string();
@@ -44,6 +45,8 @@ private:
     std::logic_error lexer_error(const std::string& error_message);
     std::string_view fetch_current_line();
     [[nodiscard]] text_position get_text_position() const;
+    position_range get_range(int range) const;
+
 
     std::vector<token> token_vector;
     std::string source_code;

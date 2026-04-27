@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <variant>
+
+#include "frontend_types.h"
 #include "helper.h"
 
 struct term_index_base {
@@ -100,15 +102,25 @@ struct prolog_term {
 };
 
 struct prolog_clause {
-    prolog_clause(term_index head, term_index body): head(head), body(body) {
+    prolog_clause(term_index head, term_index body)
+    : head(head), body(body) {
     }
 
-    explicit prolog_clause(term_index head): head(head),
-                                             body(term_index::invalid()) {
+    explicit prolog_clause(term_index head)
+    : head(head) {
     }
 
-    term_index head; // Term
-    term_index body; // Goal: -1 if not present
+    prolog_clause(term_index head, term_index body, position_range range)
+    : head(head), body(body), range(std::make_unique<position_range>(range)) {
+    }
+
+    prolog_clause(term_index head, position_range range)
+    : head(head), range(std::make_unique<position_range>(range)) {
+    }
+
+    term_index head;
+    term_index body = term_index::invalid(); // term_index::invalid() if body not present
+    std::unique_ptr<position_range> range {}; // Range of the clause: nullptr if not present
 };
 
 struct prolog_timestamp {

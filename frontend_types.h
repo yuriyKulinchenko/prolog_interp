@@ -32,7 +32,8 @@ X(INTEGER)             \
 X(LESS_THAN)           \
 X(MORE_THAN)           \
 X(LESS_THAN_EQUAL)     \
-X(MORE_THAN_EQUAL)
+X(MORE_THAN_EQUAL)     \
+X(END_OF_FILE)         \
 
 #define NODE_TYPE_LIST(X) \
 X(CLAUSE)              \
@@ -62,17 +63,22 @@ struct text_position {
     int line_number;
 };
 
+struct position_range {
+    text_position start; // Inclusive
+    text_position end; // Exclusive
+};
+
 struct token {
-    token(token_type type, text_position position);
-    token(token_type type, std::string identifier, text_position position);
-    token(token_type type, int integer, text_position position);
+    token(token_type type, position_range range);
+    token(token_type type, std::string identifier, position_range range);
+    token(token_type type, int integer, position_range range);
 
     std::string& identifier();
     int integer();
 
     token_type type;
     std::variant<int, std::string> tagged_union;
-    text_position position;
+    position_range range;
 };
 
 // NODES
@@ -84,12 +90,13 @@ enum class node_type {
 };
 
 struct node {
-    node();
-    explicit node(node_type type);
-    node(node_type type, std::string name);
-    node(node_type type, int integer);
-    node(node_type type, std::vector<node> children);
-    node(node_type type, std::string name, std::vector<node> children);
+    explicit node(const position_range& range);
+    node(node_type type, const position_range& range);
+    node(node_type type, std::string name, const position_range& range);
+    node(node_type type, int integer, const position_range& range);
+    node(node_type type, std::vector<node> children, const position_range& range);
+    node(node_type type, std::string name, std::vector<node> children,
+         const position_range& range);
 
     std::string& name();
     int integer();
@@ -97,6 +104,7 @@ struct node {
     node_type type;
     std::variant<int, std::string> tagged_union;
     std::vector<node> children;
+    position_range range;
 };
 
 // HELPER FUNCTIONS:

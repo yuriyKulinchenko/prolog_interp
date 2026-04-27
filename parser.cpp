@@ -9,7 +9,11 @@ node create_transparent_list(node_type type, std::vector<node> nodes,
     if (nodes.size() == 1) {
         return nodes[0];
     }
-    return node{type, name, nodes};
+
+    text_position start = nodes[0].range.start;
+    text_position end = nodes[nodes.size() - 1].range.end;
+
+    return node{type, name, nodes, {start, end}};
 }
 
 std::vector<node> parser::run() {
@@ -34,6 +38,7 @@ std::vector<node> parser::program() {
 // Clause ::= Term ':-' GoalExpr '.' | Term '.'
 
 node parser::clause() {
+    text_position start = current_position().start;
     node term_instance = term();
     if (term_instance.type != node_type::TERM) {
         throw parser_error(
@@ -48,8 +53,8 @@ node parser::clause() {
     if (match(token_type::RULE_OPERATOR))
         goal_instance = goalExpr();
     consume(token_type::DOT, "Expect '.' after clause", previous());
-
-    node clause_instance = {node_type::CLAUSE, {term_instance}};
+    text_position end = previous_position().end;
+    node clause_instance = {node_type::CLAUSE, {term_instance}, {start, end}};
     if (goal_instance)
         clause_instance.children.push_back(*goal_instance);
     return clause_instance;
@@ -58,7 +63,10 @@ node parser::clause() {
 // GoalExpr ::= Disjunction
 
 node parser::goalExpr() {
-    return {node_type::GOAL, {disjunction()}};
+    text_position start = current_position().start;
+    node inner_disjunction = disjunction();
+    text_position end = previous_position().end;
+    return {node_type::GOAL, {inner_disjunction}, {start, end}};
 }
 
 // Disjunction ::= Conjunction (';' Conjunction)*
@@ -89,7 +97,7 @@ node parser::conjunction() {
 
 node parser::simpleGoal() {
     if (match(token_type::EXCLAMATION_MARK)) {
-        return node{node_type::CUT, "!"};
+        return node{node_type::CUT, "!", previous_position()};
     }
 
     if (match(token_type::PAREN_OPEN)) {
@@ -142,7 +150,9 @@ node parser::term() {
         }
         }
         node right = term();
-        return {node_type::TERM, identifier_string, {left, right}};
+        text_position start = left.range.start;
+        text_position end = right.range.end;
+        return {node_type::TERM, identifier_string, {left, right}, {start, end}};
     }
     return left;
 }
@@ -159,7 +169,9 @@ node parser::sum() {
             identifier_string = "-";
         }
         node right = sum();
-        return {node_type::TERM, identifier_string, {left, right}};
+        text_position start = left.range.start;
+        text_position end = right.range.end;
+        return {node_type::TERM, identifier_string, {left, right}, {start, end}};
     }
     return left;
 }
@@ -176,7 +188,9 @@ node parser::product() {
             identifier_string = "/";
         }
         node right = product();
-        return {node_type::TERM, identifier_string, {left, right}};
+        text_position start = left.range.start;
+        text_position end = right.range.end;
+        return {node_type::TERM, identifier_string, {left, right}, {start, end}};
     }
     return left;
 }
@@ -186,36 +200,41 @@ node parser::product() {
 
 node parser::simple_term() {
     if (check(token_type::VARIABLE)) {
-        return node{node_type::VARIABLE, advance().identifier()};
+        return node{node_type::VARIABLE, advance().identifier(), previous_position()};
     }
 
     // Unary '+':
     if (check(token_type::PLUS)) {
+        text_position start = current_position().start;
         token& erroneous_token = advance();
         int value = consume(
             token_type::INTEGER,
             "Expect integer to follow unary '+'",
             erroneous_token).integer();
-        return {node_type::INTEGER_TERM, value};
+        text_position end = previous_position().end;
+        return {node_type::INTEGER_TERM, value, {start, end}};
     }
 
     // Unary '-':
     if (check(token_type::MINUS)) {
+        text_position start = current_position().start;
         token& erroneous_token = advance();
         int value = consume(
             token_type::INTEGER,
             "Expect integer to follow unary '-'",
             erroneous_token).integer();
-        return {node_type::INTEGER_TERM, -value};
+        text_position end = previous_position().end;
+        return {node_type::INTEGER_TERM, -value, {start, end}};
     }
 
     // Regular integer:
     if (check(token_type::INTEGER)) {
-        return {node_type::INTEGER_TERM, advance().integer()};
+        return {node_type::INTEGER_TERM, advance().integer(), previous_position()};
     }
 
     // Parsing identifier:
     if (check(token_type::SYMBOL)) {
+        text_position start = current_position().start;
         std::string identifier_name = advance().identifier();
         std::optional<std::vector<node>> nodes;
         if (match(token_type::PAREN_OPEN)) {
@@ -223,8 +242,8 @@ node parser::simple_term() {
             nodes = elements();
             consume(token_type::PAREN_CLOSED, "Unmatched bracket", open_paren);
         }
-
-        node term_instance = {node_type::TERM, identifier_name};
+        text_position end = previous_position().end;
+        node term_instance = {node_type::TERM, identifier_name, {start, end}};
         term_instance.children = nodes ? *nodes : std::vector<node>{};
         return term_instance;
     }
@@ -242,22 +261,22 @@ node parser::simple_term() {
 node parser::list(token& token_instance) {
     // Empty list:
     if (match(token_type::SQUARE_CLOSED)) {
-        return {node_type::TERM, "[]"};
+        return {node_type::TERM, "[]", previous_position()};
     }
 
     std::vector<node> nodes = elements();
     // Elements have to be converted into a linked list:
-    node head = {node_type::TERM, ".", {nodes[0]}};
+    node head = {node_type::TERM, ".", {nodes[0]}, nodes[0].range};
     std::vector<node>* tail = &head.children;
     for (int i = 1; i < nodes.size(); i++) {
-        tail->push_back({node_type::TERM, ".", {nodes[i]}});
+        tail->push_back({node_type::TERM, ".", {nodes[i]}, nodes[i].range});
         tail = &(*tail)[1].children;
     }
 
     if (match(token_type::PIPE)) {
         tail->push_back(term());
     } else {
-        tail->emplace_back(node_type::TERM, "[]");
+        tail->emplace_back(node_type::TERM, "[]", previous_position());
     }
 
     consume(token_type::SQUARE_CLOSED, "unmatched square bracket",
@@ -315,7 +334,7 @@ bool parser::match(token_type type) {
 }
 
 bool parser::at_end() {
-    return token_vector.size() == i;
+    return check(token_type::END_OF_FILE);
 }
 
 std::ostream& bracketed_elements_log(std::ostream& stream,
@@ -361,6 +380,18 @@ std::ostream& operator<<(std::ostream& stream, node& node) {
     return stream;
 }
 
+position_range parser::current_position() {
+    return peek().range;
+}
+
+position_range parser::next_position() {
+    return next().range;
+}
+
+position_range parser::previous_position() {
+    return previous().range;
+}
+
 std::logic_error parser::parser_error(const std::string& error_message) {
     return parser_error(error_message, previous());
 }
@@ -368,13 +399,13 @@ std::logic_error parser::parser_error(const std::string& error_message) {
 std::logic_error parser::parser_error(const std::string& error_message,
                                       const token& token_instance) {
     std::string current_line{
-        lexer_instance.fetch_line_at(token_instance.position.line_start_index)};
+        lexer_instance.fetch_line_at(token_instance.range.start.line_start_index)};
 
     std::string position_error = generate_position_error_string(
         current_line,
-        token_instance.position.pointer_index - token_instance.position.
-        line_start_index,
-        token_instance.position.line_number);
+        token_instance.range.start.pointer_index -
+        token_instance.range.start.line_start_index,
+        token_instance.range.start.line_number);
 
     return std::logic_error(
         std::format("\nPARSER ERROR: {}\n{}",
