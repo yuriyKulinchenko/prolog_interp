@@ -146,7 +146,6 @@ private:
     strong_vector<name_idx, std::pair<clause_idx, clause_idx>> identifier_clause_map;
 
     std::unordered_map<std::string, term_idx> name_variable_map;
-    std::unordered_map<term_idx, std::string> variable_name_map;
 
     static constexpr int max_logging_depth = 20;
 

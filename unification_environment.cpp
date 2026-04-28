@@ -108,7 +108,6 @@ clause_idx unification_environment::add_clause(node& node_instance) {
         clause_vector[idx].body = add_node(node_instance.children[1]);
     }
     // Remove all variable bindings:
-    variable_name_map.clear();
     name_variable_map.clear();
     return idx;
 }
@@ -322,7 +321,6 @@ term_idx unification_environment::add_variable(std::string& variable_name) {
 
     if (variable_name != "_") {
         name_variable_map[variable_name] = variable_index;
-        variable_name_map[variable_index] = variable_name;
     }
 
     return variable_index;
@@ -524,7 +522,6 @@ void unification_environment::test_unification() {
     if (success)
         log_variables();
 
-    variable_name_map.clear();
     name_variable_map.clear();
     unwind_trail(trail_idx{0});
     unwind_term_vector(term_idx{0});
@@ -839,7 +836,6 @@ void unification_environment::run_interpreter() {
     for (;;) {
         unwind_term_vector(base_term);
         name_variable_map.clear();
-        variable_name_map.clear();
         std::cout << "?- ";
         std::string s;
         std::getline(std::cin, s);
