@@ -27,3 +27,7 @@ add_library(prolog_interp_lib STATIC
 add_executable(prolog_interp main.cpp)
 
 target_link_libraries(prolog_interp PRIVATE prolog_interp_lib)
+
+if (EMSCRIPTEN)
+    target_compile_options(prolog_interp_lib PRIVATE -fwasm-exceptions)
+endif()

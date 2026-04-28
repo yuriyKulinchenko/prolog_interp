@@ -33,7 +33,8 @@ X(LESS_THAN)           \
 X(MORE_THAN)           \
 X(LESS_THAN_EQUAL)     \
 X(MORE_THAN_EQUAL)     \
-X(END_OF_FILE)         \
+X(EQUAL_COLON_EQUAL)   \
+X(END_OF_FILE)
 
 #define NODE_TYPE_LIST(X) \
 X(CLAUSE)              \
@@ -94,7 +95,8 @@ struct node {
     node(node_type type, const position_range& range);
     node(node_type type, std::string name, const position_range& range);
     node(node_type type, int integer, const position_range& range);
-    node(node_type type, std::vector<node> children, const position_range& range);
+    node(node_type type, std::vector<node> children,
+         const position_range& range);
     node(node_type type, std::string name, std::vector<node> children,
          const position_range& range);
 

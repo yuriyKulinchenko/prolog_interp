@@ -110,7 +110,8 @@ node parser::simpleGoal() {
     return term();
 }
 
-// Term ::= Sum (('='|'is'|'<'|'>'|'=<'|'>=') Sum)?
+// Term ::= Sum (Comparison Sum)?
+// Comparison ::= ('='|'is'|'<'|'>'|'=<'|'>=')
 
 node parser::term() {
     node left = sum();
@@ -118,6 +119,7 @@ node parser::term() {
     if (match(EQUAL) || match(IS)
         || match(LESS_THAN) || match(MORE_THAN)
         || match(LESS_THAN_EQUAL) || match(MORE_THAN_EQUAL)
+        || match(EQUAL_COLON_EQUAL)
     ) {
         std::string identifier_string;
         switch (previous().type) {
@@ -145,6 +147,10 @@ node parser::term() {
             identifier_string = "=<";
             break;
         }
+        case EQUAL_COLON_EQUAL: {
+            identifier_string = "=:=";
+            break;
+        }
         default: {
             identifier_string = "";
         }
@@ -152,7 +158,8 @@ node parser::term() {
         node right = term();
         text_position start = left.range.start;
         text_position end = right.range.end;
-        return {node_type::TERM, identifier_string, {left, right}, {start, end}};
+        return {node_type::TERM, identifier_string, {left, right},
+                {start, end}};
     }
     return left;
 }
@@ -171,7 +178,8 @@ node parser::sum() {
         node right = sum();
         text_position start = left.range.start;
         text_position end = right.range.end;
-        return {node_type::TERM, identifier_string, {left, right}, {start, end}};
+        return {node_type::TERM, identifier_string, {left, right},
+                {start, end}};
     }
     return left;
 }
@@ -190,7 +198,8 @@ node parser::product() {
         node right = product();
         text_position start = left.range.start;
         text_position end = right.range.end;
-        return {node_type::TERM, identifier_string, {left, right}, {start, end}};
+        return {node_type::TERM, identifier_string, {left, right},
+                {start, end}};
     }
     return left;
 }
@@ -200,7 +209,8 @@ node parser::product() {
 
 node parser::simple_term() {
     if (check(token_type::VARIABLE)) {
-        return node{node_type::VARIABLE, advance().identifier(), previous_position()};
+        return node{node_type::VARIABLE, advance().identifier(),
+                    previous_position()};
     }
 
     // Unary '+':
@@ -229,7 +239,8 @@ node parser::simple_term() {
 
     // Regular integer:
     if (check(token_type::INTEGER)) {
-        return {node_type::INTEGER_TERM, advance().integer(), previous_position()};
+        return {node_type::INTEGER_TERM, advance().integer(),
+                previous_position()};
     }
 
     // Parsing identifier:
@@ -399,7 +410,8 @@ std::logic_error parser::parser_error(const std::string& error_message) {
 std::logic_error parser::parser_error(const std::string& error_message,
                                       const token& token_instance) {
     std::string current_line{
-        lexer_instance.fetch_line_at(token_instance.range.start.line_start_index)};
+        lexer_instance.fetch_line_at(
+            token_instance.range.start.line_start_index)};
 
     std::string position_error = generate_position_error_string(
         current_line,

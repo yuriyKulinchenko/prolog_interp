@@ -61,7 +61,8 @@ public:
 
     [[nodiscard]] const name_vec& get_names() const;
     [[nodiscard]] const var_name_vec& get_var_names() const;
-    [[nodiscard]] const std::unordered_map<std::string, term_idx>& get_name_variable_map() const;
+    [[nodiscard]] const std::unordered_map<std::string, term_idx>&
+    get_name_variable_map() const;
 
     [[nodiscard]] prolog_term& get_term_at(term_idx i);
     [[nodiscard]] size_t get_term_count() const;
@@ -143,17 +144,18 @@ private:
 
     std::unordered_map<std::string, name_idx> identifier_map;
     std::unordered_map<std::string, var_name_idx> variable_identifier_map;
-    strong_vector<name_idx, std::pair<clause_idx, clause_idx>> identifier_clause_map;
+    strong_vector<name_idx, std::pair<clause_idx, clause_idx>>
+    identifier_clause_map;
 
     std::unordered_map<std::string, term_idx> name_variable_map;
 
     static constexpr int max_logging_depth = 20;
 
-    static constexpr std::array<std::string_view, 18> reserved_identifiers{
+    static constexpr std::array<std::string_view, 19> reserved_identifiers{
         ",", ";", "!", ".", "[]",
         "+", "-", "*", "/", "is",
         "=", "\\=", "\\+", "<", ">",
-        "=<", ">=", "halt"
+        "=<", ">=", "=:=", "halt"
     };
 
     // For the operation of the interpreter:

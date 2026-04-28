@@ -95,10 +95,12 @@ std::vector<token> lexer::run() {
         }
 
         case '=': {
-            if (match('<'))
+            if (match('<')) {
                 emit_token(LESS_THAN_EQUAL, get_range(2));
-            else
-                emit_token(EQUAL);
+            } else if (match(':')) {
+                consume('=', "Expect '=:' to be followed by '='");
+                emit_token(EQUAL_COLON_EQUAL, get_range(3));
+            } else emit_token(EQUAL);
             break;
         }
 
@@ -229,7 +231,8 @@ bool lexer::at_end() {
     return source_code.length() == i;
 }
 
-void lexer::emit_token(token_type type, position_range range, const std::string& identifier) {
+void lexer::emit_token(token_type type, position_range range,
+                       const std::string& identifier) {
     token_vector.emplace_back(type, identifier, range);
 }
 
@@ -258,7 +261,8 @@ void lexer::emit_string() {
     if (identifier == "_") {
         type = token_type::VARIABLE;
     } else if (identifier == "is") {
-        emit_token(token_type::IS, position_range{start_position, get_text_position()});
+        emit_token(token_type::IS,
+                   position_range{start_position, get_text_position()});
         return;
     } else {
         type = is_alpha_capital(source_code[start])
@@ -266,7 +270,8 @@ void lexer::emit_string() {
                    : token_type::SYMBOL;
     }
 
-    emit_token(type, position_range{start_position, get_text_position()}, identifier);
+    emit_token(type, position_range{start_position, get_text_position()},
+               identifier);
 }
 
 void lexer::emit_integer() {
@@ -282,7 +287,8 @@ void lexer::emit_integer() {
 
     int integer = std::stoi(source_code.substr(start, i - start));
 
-    emit_token(token_type::INTEGER, position_range{start_position, get_text_position()}, integer);
+    emit_token(token_type::INTEGER,
+               position_range{start_position, get_text_position()}, integer);
 }
 
 std::logic_error lexer::lexer_error(const std::string& error_message) {

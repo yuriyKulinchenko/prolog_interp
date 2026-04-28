@@ -101,7 +101,8 @@ clause_idx unification_environment::add_clause(node& node_instance) {
             "ERROR: Clause head expected to be Term, received {}", type_string);
     }
 
-    clause_vector.emplace_back(add_node(node_instance.children[0]), node_instance.range);
+    clause_vector.emplace_back(add_node(node_instance.children[0]),
+                               node_instance.range);
     clause_idx idx{clause_vector.size() - 1};
     if (node_instance.children.size() == 2) {
         // The body is also present:
@@ -194,23 +195,28 @@ term_idx unification_environment::duplicate_structure(term_idx index) {
 term_idx unification_environment::duplicate_variable(term_idx index) {
     prolog_var& original_variable = term_vector[index].variable();
 
-    bool is_anonymous_variable = original_variable.identifier == var_name_idx::invalid();
+    bool is_anonymous_variable =
+        original_variable.identifier == var_name_idx::invalid();
 
     if (!is_anonymous_variable) {
-        if (variable_bindings[original_variable.identifier] != term_idx::invalid())
+        if (variable_bindings[original_variable.identifier] !=
+            term_idx::invalid())
             return variable_bindings[original_variable.identifier];
     }
 
     term_idx duplicated_variable_index{term_vector.size()};
 
-    int new_version = is_anonymous_variable ?
-    ++anonymous_var_count :
-    ++variable_version_vector[original_variable.identifier];
+    int new_version = is_anonymous_variable
+                          ? ++anonymous_var_count
+                          : ++variable_version_vector
+                          [original_variable.identifier];
 
-    term_vector.emplace_back(prolog_var{original_variable.identifier, new_version});
+    term_vector.emplace_back(
+        prolog_var{original_variable.identifier, new_version});
 
     if (!is_anonymous_variable)
-        add_variable_binding(original_variable.identifier, duplicated_variable_index);
+        add_variable_binding(original_variable.identifier,
+                             duplicated_variable_index);
 
     return duplicated_variable_index;
 }
@@ -228,7 +234,8 @@ void unification_environment::add_clauses(std::vector<node>& nodes) {
     std::ranges::sort(clause_vector, std::less{}, projection);
 
     // Create flat table instead of hash-map:
-    identifier_clause_map = strong_vector<name_idx, std::pair<clause_idx, clause_idx>>(
+    identifier_clause_map = strong_vector<
+        name_idx, std::pair<clause_idx, clause_idx>>(
         identifier_vector.size(), std::pair{clause_idx{0}, clause_idx{0}});
 
     name_idx current_id = name_idx::invalid();
@@ -256,7 +263,7 @@ void unification_environment::add_clauses(std::vector<node>& nodes) {
     }
 
     variable_bindings = strong_vector<var_name_idx, term_idx>
-    (variable_identifier_vector.size(), term_idx::invalid());
+        (variable_identifier_vector.size(), term_idx::invalid());
 
     dirty_indices =
         std::vector<size_t>(variable_identifier_vector.size());
@@ -649,6 +656,7 @@ void unification_environment::log_structure(term_idx structure_index,
     INFIX_CASE_STATEMENT(">");
     INFIX_CASE_STATEMENT(">=");
     INFIX_CASE_STATEMENT("=<");
+    INFIX_CASE_STATEMENT("=:=");
     INFIX_CASE_STATEMENT("is");
     default:
 
@@ -913,7 +921,8 @@ unification_environment::get_name_variable_map() const {
     return name_variable_map;
 }
 
-const prolog_clause& unification_environment::get_clause_at(clause_idx idx) const {
+const prolog_clause& unification_environment::get_clause_at(
+    clause_idx idx) const {
     return clause_vector[idx];
 }
 

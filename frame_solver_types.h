@@ -1,6 +1,8 @@
 #ifndef FRAME_SOLVER_TYPES_H
 #define FRAME_SOLVER_TYPES_H
 
+#include <stdexcept>
+#include <string>
 #include "helper.h"
 #include "prolog_types.h"
 #include "strong_indices.h"
@@ -131,6 +133,13 @@ struct frame_logger_configuration {
     static constexpr bool log_continuation = true;
     static constexpr bool log_parent = true;
     static constexpr bool log_cut_point = true;
+};
+
+struct prolog_user_error : std::exception {
+    explicit prolog_user_error(std::string message) : message_(std::move(message)) {}
+    [[nodiscard]] const char* what() const noexcept override { return message_.c_str(); }
+private:
+    std::string message_;
 };
 }
 

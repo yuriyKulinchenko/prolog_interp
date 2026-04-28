@@ -3,7 +3,7 @@
 #include "lexer_parser.h"
 #include "unification_environment.h"
 
-#define PATH "../examples/source.txt"
+#define PATH "../examples/housesProblem.txt"
 
 void test_step(unification_environment& environment, lexer_parser& frontend) {
     using namespace frame_solver_types;

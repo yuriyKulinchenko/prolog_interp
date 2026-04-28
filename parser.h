@@ -27,7 +27,7 @@ SimpleGoal ::= Term
              | '(' GoalExpr ')'
              | '!'
 
-Term ::= Sum (('='|'is'|'<','>'|'=<'|'>=') Sum)?
+Term ::= Sum (Comparison Sum)?
 
 Sum ::= Product (('+'|'-') Sum)?
 
@@ -44,6 +44,8 @@ List ::= '[]'
        | '[' Elements '|' Term ']'
 
 Elements ::= Term (',' Term)*
+
+Comparison ::= ('='|'is'|'<','>'|'=<'|'>=' | '=:=')
 
 For now, the assumption is that only a set of rules will be parsed.
 The querying will be done through the terminal

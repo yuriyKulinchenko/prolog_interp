@@ -172,15 +172,17 @@ step_result frame_solver::step() {
 
         clause_idx matched = stack[current_frame_index].original_clause;
         if (invalid(stack_index)) {
-            return step_result {SUCCESS_RULE, matched};
+            return step_result{SUCCESS_RULE, matched};
         } else {
-            return step_result {INVOKE_RULE, matched};
+            return step_result{INVOKE_RULE, matched};
         }
     }
 
     case frame_type::CUT: {
         handle_cut(current_frame);
-        return invalid(stack_index) ? step_result {SUCCESS_CUT} : step_result{CUT};
+        return invalid(stack_index)
+                   ? step_result{SUCCESS_CUT}
+                   : step_result{CUT};
     }
 
     case frame_type::CONJUNCTION: {
@@ -201,8 +203,13 @@ step_result frame_solver::step() {
 #define COMPARISON_CASE(op, cond)\
 CASE(op): {                                                                     \
     current_frame.continuation.remains = false;                                 \
-    int left_val = env.evaluate_arithmetic_term(structure.left());              \
-    int right_val = env.evaluate_arithmetic_term(structure.right());            \
+    int left_val, right_val;                                                    \
+    try {                                                                       \
+        left_val = env.evaluate_arithmetic_term(structure.left());             \
+        right_val = env.evaluate_arithmetic_term(structure.right());            \
+    } catch (std::exception& e) {                                               \
+        throw prolog_user_error(e.what());                                      \
+    }                                                                           \
     if (cond) {unwind(); return true;}                                          \
     return false;                                                               \
 }
@@ -213,17 +220,16 @@ bool frame_solver::handle_rule(frame& current_frame) {
 
     switch (structure.index.raw()) {
     CASE("halt"):
-        throw std::logic_error("EXECUTION HALTED");
+        throw prolog_user_error("halt/0: execution halted by user");
 
     CASE("is"): {
         term_idx left = structure.left();
         if (env.term_vector[left].is_structure()) {
-            throw std::logic_error(
-                "ERROR: Left hand side of is/2 must be variable or integer");
+            throw prolog_user_error(
+                "is/2: left-hand side must be an unbound variable or integer");
         }
 
-        term_idx right = env.evaluate_and_create_arithmetic_term(
-            structure.right());
+        term_idx right = env.add_integer(eval_arith(structure.right()));
         env.unify(left, right);
         unwind();
         return true;
@@ -259,6 +265,7 @@ bool frame_solver::handle_rule(frame& current_frame) {
     COMPARISON_CASE(">", left_val > right_val);
     COMPARISON_CASE("=<", left_val <= right_val);
     COMPARISON_CASE(">=", left_val >= right_val);
+    COMPARISON_CASE("=:=", left_val == right_val);
 
     default:
 
@@ -277,7 +284,7 @@ bool frame_solver::handle_rule(frame& current_frame) {
 
         if (invalid(current_frame.clause_lower_bound)) {
             auto [lower_bound, upper_bound] =
-             env.identifier_clause_map[structure.index];
+                env.identifier_clause_map[structure.index];
             current_frame.clause_lower_bound = lower_bound;
             current_frame.clause_upper_bound = upper_bound;
         }
@@ -313,10 +320,6 @@ bool frame_solver::handle_rule(frame& current_frame) {
                                   continuation);
 
             if (is_success(result)) {
-                // Stamp the rule frame (by index — current_frame ref may be stale after
-                // emplace_back in apply_clause).  apply_clause already stamps the body
-                // frame for the RULE case; this also covers the FACT case where no body
-                // frame exists.
                 stack[stack_index].original_clause = c;
                 if (i + 1 < decision_range) {
                     // If possible, place a decision point:
@@ -505,35 +508,36 @@ frame_type identifier_index_to_frame_type(name_idx i) {
     }
 }
 
-frame frame_solver::create_frame(term_idx index, frame_idx parent, choice_idx cut_point,
+frame frame_solver::create_frame(term_idx index, frame_idx parent,
+                                 choice_idx cut_point,
                                  continuation_state parent_continuation) const {
     ASSERT(index.raw() < env.term_vector.size());
-    prolog_term& term = env.term_vector[index];
-    switch (term.type) {
-        using enum prolog_term_type;
-        using enum frame_type;
-    case STRUCTURE: {
-        prolog_struct& structure = env.get_struct(index);
-        frame_type frame_type_ =
-            identifier_index_to_frame_type(structure.index);
-        if (frame_type_ == RULE) {
-            cut_point = choice_idx{choices.size()};
-        }
-        return {
-            frame_type_, index, parent, cut_point,
-            parent_continuation
-        };
+    term_idx resolved_idx = env.resolve_bound_variable(index);
+    prolog_term& term = env.term_vector[resolved_idx];
+
+    if (term.type == prolog_term_type::INTEGER) {
+        throw prolog_user_error(
+            "call/1: cannot invoke an integer as a goal");
+    }
+    if (term.type == prolog_term_type::VARIABLE) {
+        throw prolog_user_error(
+            "call/1: cannot invoke an unbound variable as a goal");
     }
 
-    default: {
-        throw std::logic_error{
-            "Error: cannot currently create variable frames"
-        };
+    prolog_struct& structure = env.get_struct(resolved_idx);
+    frame_type frame_type_ =
+        identifier_index_to_frame_type(structure.index);
+    if (frame_type_ == frame_type::RULE) {
+        cut_point = choice_idx{choices.size()};
     }
-    }
+    return {
+        frame_type_, resolved_idx, parent, cut_point,
+        parent_continuation
+    };
 }
 
-void frame_solver::add_frame(term_idx index, frame_idx parent, choice_idx cut_point,
+void frame_solver::add_frame(term_idx index, frame_idx parent,
+                             choice_idx cut_point,
                              continuation_state parent_continuation) {
 
     stack.emplace_back(create_frame(index, parent, cut_point,
@@ -610,6 +614,14 @@ void frame_solver::log_choices() {
         }
     }
     std::cout << '\n';
+}
+
+int frame_solver::eval_arith(term_idx i) const {
+    try {
+        return env.evaluate_arithmetic_term(i);
+    } catch (std::exception& e) {
+        throw prolog_user_error(e.what());
+    }
 }
 
 bool frame_solver::operator*() const {

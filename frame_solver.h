@@ -66,6 +66,8 @@ private:
 
     void log_frame(frame& frame_);
 
+    [[nodiscard]] int eval_arith(term_idx i) const;
+
     // handle_rule() returns true if and only if rule application is successful.
     bool handle_rule(frame& current_frame);
     bool handle_application_result(application_result result);
