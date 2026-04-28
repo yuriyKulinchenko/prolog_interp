@@ -722,8 +722,13 @@ void unification_environment::log_list(term_idx list_index, int depth) {
 void unification_environment::log_variable(term_idx variable_index) {
     prolog_var& variable = term_vector[variable_index].variable();
 
-    // TODO: Handle anonymous variable '_' properly
-    std::cout << variable_identifier_vector[variable.identifier] << subscript_number(variable.version);
+    if (variable.identifier == var_name_idx::invalid()) {
+        std::cout << '_';
+    } else {
+        std::cout << variable_identifier_vector[variable.identifier];
+    }
+
+    if (variable.version != 0) std::cout << subscript_number(variable.version);
 }
 
 void unification_environment::log_variables() {
