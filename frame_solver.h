@@ -8,10 +8,14 @@
 // #define FRAME_SOLVER_DEBUG
 
 using choice_vec =
-    strong_vector<choice_idx, frame_solver_types::choice_point>;
+strong_vector<choice_idx, frame_solver_types::choice_point>;
 
 using frame_vec =
-    strong_vector<frame_idx, frame_solver_types::frame>;
+strong_vector<frame_idx, frame_solver_types::frame>;
+
+struct frame_solver_config {
+    bool enable_tail_optimisation = true;
+};
 
 class frame_solver {
 public:
@@ -21,8 +25,11 @@ public:
     using choice_point = frame_solver_types::choice_point;
 
     explicit
-    frame_solver(unification_environment& environment): env(environment),
-        found_all(false) {
+    frame_solver(unification_environment& environment,
+                 frame_solver_config config = {}):
+        env(environment),
+        found_all(false),
+        config(config) {
     }
 
     void solve(term_idx goal_index);
@@ -31,11 +38,13 @@ public:
 
     frame_solver_types::step_result step();
 
-    application_result apply_clause(clause_idx clause_index, term_idx head_index,
+    application_result apply_clause(clause_idx clause_index,
+                                    term_idx head_index,
                                     frame_idx parent, choice_idx cut_point,
                                     continuation_state parent_continuation);
 
-    application_result apply_clause_tail(clause_idx clause_index, term_idx head_index,
+    application_result apply_clause_tail(clause_idx clause_index,
+                                         term_idx head_index,
                                          frame& current_frame);
 
     void unwind();
@@ -84,6 +93,8 @@ private:
 
     frame_idx stack_index{0};
     bool solved = false;
+
+    frame_solver_config config;
 };
 
 

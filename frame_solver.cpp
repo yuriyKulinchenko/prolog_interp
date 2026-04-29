@@ -303,7 +303,7 @@ bool frame_solver::handle_rule(frame& current_frame) {
         size_t decision_index = current_frame.decision_index;
 
         // Tail optimization:
-        if (decision_range == 1) {
+        if (config.enable_tail_optimisation && decision_range == 1) {
             result = apply_clause_tail(lower_bound, head_index, current_frame);
             if (result == application_result::FACT) {
                 current_frame.original_clause = lower_bound;
