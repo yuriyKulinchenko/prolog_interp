@@ -863,18 +863,19 @@ void unification_environment::run_interpreter() {
 
             frame_solver solver{*this};
             solver.solve(goal_index);
-            ++solver;
 
-            while (!solver.at_end()) {
+            while (solver.next()) {
                 std::println("{}true{}", GREEN, RESET);
                 log_variables();
                 std::string command;
                 std::getline(std::cin, command);
-                ++solver;
             }
 
             std::println("{}false{}", RED, RESET);
-        } catch (std::logic_error& e) {
+        } catch (frame_solver_types::prolog_user_error& e) {
+            if (std::string{e.what()} == "halt/0: execution halted by user") {
+                return;
+            }
             std::println("{}{}{}", RED, e.what(), RESET);
         }
     }

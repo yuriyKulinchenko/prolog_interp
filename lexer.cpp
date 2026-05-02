@@ -123,7 +123,7 @@ std::vector<token> lexer::run() {
                 emit_token(NOT_EQUAL, get_range(2));
                 break;
             case '+':
-                emit_token(NOT, get_range(2));
+                emit_token(SYMBOL, get_range(2), "\\+");
                 break;
             default:
                 throw lexer_error("Expect '\\' to be followed by '=' or '+'");

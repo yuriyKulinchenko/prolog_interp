@@ -114,9 +114,10 @@ do {                    \
 #endif
 
 
-frame_solver& frame_solver::operator++() {
+bool frame_solver::next() {
     if (invalid(stack_index)) {
-        if (!backtrack()) return *this;
+        // Previous traversal was successful:
+        if (!backtrack()) return false;
         PRINT_TRACE();
     }
 
@@ -127,7 +128,7 @@ frame_solver& frame_solver::operator++() {
         switch (current_frame.type) {
         case frame_type::RULE: {
             if (!handle_rule(current_frame)) {
-                if (!backtrack()) return *this;
+                if (!backtrack()) return false;
             }
             continue;
         }
@@ -151,7 +152,7 @@ frame_solver& frame_solver::operator++() {
             throw std::logic_error{"Not implemented"};
         }
     }
-    return *this;
+    return true;
 }
 
 step_result frame_solver::step() {
@@ -167,7 +168,9 @@ step_result frame_solver::step() {
         frame_idx current_frame_index = stack_index;
 
         if (!handle_rule(current_frame)) {
-            return backtrack() ? step_result{BACKTRACK} : step_result{FINISH};
+            return backtrack()
+                       ? step_result{BACKTRACK}
+                       : step_result{FINISH};
         }
 
         clause_idx matched = stack[current_frame_index].original_clause;
@@ -201,26 +204,29 @@ step_result frame_solver::step() {
 }
 
 #define COMPARISON_CASE(op, cond)\
-CASE(op): {                                                                     \
-    current_frame.continuation.remains = false;                                 \
-    int left_val, right_val;                                                    \
-    try {                                                                       \
-        left_val = env.evaluate_arithmetic_term(structure.left());             \
-        right_val = env.evaluate_arithmetic_term(structure.right());            \
-    } catch (std::exception& e) {                                               \
-        throw prolog_user_error(e.what());                                      \
-    }                                                                           \
-    if (cond) {unwind(); return true;}                                          \
-    return false;                                                               \
+CASE(op): {                                                                         \
+    int left_val, right_val;                                                        \
+    try {                                                                           \
+        left_val = env.evaluate_arithmetic_term(structure.left());                  \
+        right_val = env.evaluate_arithmetic_term(structure.right());                \
+    } catch (std::exception& e) {                                                   \
+        throw prolog_user_error(e.what());                                          \
+    }                                                                               \
+    if (cond) {                                                                     \
+        unwind(current_frame);                                                      \
+        return true;                                                                \
+    }                                                                               \
+    return false;                                                                   \
 }
 
 bool frame_solver::handle_rule(frame& current_frame) {
     prolog_struct& structure = env.get_struct(current_frame.index);
-    current_frame.continuation.remains = false;
 
     switch (structure.index.raw()) {
-    CASE("halt"):
+    CASE("halt"): {
+        if (structure.num_children != 0) break;
         throw prolog_user_error("halt/0: execution halted by user");
+    }
 
     CASE("is"): {
         term_idx left = structure.left();
@@ -231,7 +237,7 @@ bool frame_solver::handle_rule(frame& current_frame) {
 
         term_idx right = env.add_integer(eval_arith(structure.right()));
         env.unify(left, right);
-        unwind();
+        unwind(current_frame);
         return true;
     }
 
@@ -240,11 +246,11 @@ bool frame_solver::handle_rule(frame& current_frame) {
         term_idx right = structure.right();
 
         if (env.unify(left, right)) {
-            unwind();
-        } else {
-            return false;
+            unwind(current_frame);
+            return true;
         }
-        return true;
+
+        return false;
     }
 
     CASE("\\="): {
@@ -257,8 +263,35 @@ bool frame_solver::handle_rule(frame& current_frame) {
             return false;
         }
 
-        unwind();
+        unwind(current_frame);
         return true;
+    }
+
+    CASE("not"):
+    CASE("\\+"): {
+        if (structure.num_children != 1) break;
+
+        if (current_frame.decision_index == 1) {
+            // 'not' has been invoked as a result of a backtrack:
+            unwind(current_frame);
+            return true;
+        }
+
+        if (current_frame.continuation.next == 0) {
+            // 'not' has been invoked for the first time:
+            current_frame.continuation.next = 1;
+            choices.emplace_back(env.get_timestamp(), stack_index,
+                                 stack.size(), 1,
+                                 choice_point_type::NEGATION);
+
+            add_frame(structure[0], stack_index, current_frame.cut_point,
+                      current_frame.continuation);
+            stack_index = top_index();
+            return true;
+        }
+        // Second entry into 'not' (propagate failure):
+        erase_choices(current_frame.cut_point);
+        return false;
     }
 
     COMPARISON_CASE("<", left_val < right_val);
@@ -269,74 +302,80 @@ bool frame_solver::handle_rule(frame& current_frame) {
 
     default:
 
-        // Get the current state, in case a decision point needs to be recovered:
-        prolog_timestamp timestamp = env.get_timestamp();
-        size_t stack_size = stack.size();
 
-        continuation_state continuation = current_frame.continuation;
-        choice_idx cut_point = current_frame.cut_point;
-
-        if (structure.index.raw() >= env.identifier_clause_map.size()) {
-            return false;
-        }
-
-        // This lookup is not always necessary:
-
-        if (invalid(current_frame.clause_lower_bound)) {
-            auto [lower_bound, upper_bound] =
-                env.identifier_clause_map[structure.index];
-            current_frame.clause_lower_bound = lower_bound;
-            current_frame.clause_upper_bound = upper_bound;
-        }
-
-        clause_idx lower_bound = current_frame.clause_lower_bound;
-        clause_idx upper_bound = current_frame.clause_upper_bound;
-
-        if (upper_bound == clause_idx{0}) {
-            return false;
-        }
-
-        size_t decision_range = upper_bound.raw() - lower_bound.raw();
-
-        application_result result = application_result::FAILURE;
-        term_idx head_index = current_frame.index;
-        size_t decision_index = current_frame.decision_index;
-
-        // Tail optimization:
-        if (config.enable_tail_optimisation && decision_range == 1) {
-            result = apply_clause_tail(lower_bound, head_index, current_frame);
-            if (result == application_result::FACT) {
-                current_frame.original_clause = lower_bound;
-            }
-            return handle_application_result(result);
-        }
-
-        for (size_t i = decision_index; i < decision_range; i++) {
-            clause_idx c = lower_bound + i;
-            frame_idx parent = stack_index;
-
-            // Attempt clause application:
-            result = apply_clause(c, head_index, parent, cut_point,
-                                  continuation);
-
-            if (is_success(result)) {
-                stack[stack_index].original_clause = c;
-                if (i + 1 < decision_range) {
-                    // If possible, place a decision point:
-                    choices.emplace_back(
-                        timestamp, stack_index, stack_size, i + 1);
-                }
-                break;
-            }
-        }
-        return handle_application_result(result);
     }
+
+    current_frame.continuation.remains = false;
+
+    // Get the current state, in case a decision point needs to be recovered:
+    prolog_timestamp timestamp = env.get_timestamp();
+    size_t stack_size = stack.size();
+
+    continuation_state continuation = current_frame.continuation;
+    choice_idx cut_point = current_frame.cut_point;
+
+    if (structure.index.raw() >= env.identifier_clause_map.size()) {
+        return false;
+    }
+
+    // This lookup is not always necessary:
+
+    if (invalid(current_frame.clause_lower_bound)) {
+        auto [lower_bound, upper_bound] =
+            env.identifier_clause_map[structure.index];
+        current_frame.clause_lower_bound = lower_bound;
+        current_frame.clause_upper_bound = upper_bound;
+    }
+
+    clause_idx lower_bound = current_frame.clause_lower_bound;
+    clause_idx upper_bound = current_frame.clause_upper_bound;
+
+    if (upper_bound == clause_idx{0}) {
+        return false;
+    }
+
+    size_t decision_range = upper_bound.raw() - lower_bound.raw();
+
+    application_result result = application_result::FAILURE;
+    term_idx head_index = current_frame.index;
+    size_t decision_index = current_frame.decision_index;
+
+    // Tail optimization:
+    if (config.enable_tail_optimisation && decision_range == 1) {
+        result = apply_clause_tail(lower_bound, head_index, current_frame);
+        if (result == application_result::FACT) {
+            current_frame.original_clause = lower_bound;
+        }
+        return handle_application_result(result, current_frame);
+    }
+
+    for (size_t i = decision_index; i < decision_range; i++) {
+        clause_idx c = lower_bound + i;
+        frame_idx parent = stack_index;
+
+        // Attempt clause application:
+        result = apply_clause(c, head_index, parent, cut_point,
+                              continuation);
+
+        if (is_success(result)) {
+            stack[stack_index].original_clause = c;
+            if (i + 1 < decision_range) {
+                // If possible, place a decision point:
+                choices.emplace_back(
+                    timestamp, stack_index, stack_size, i + 1);
+            }
+            break;
+        }
+    }
+    return handle_application_result(result, current_frame);
 }
 
-bool frame_solver::handle_application_result(application_result result) {
+
+bool frame_solver::handle_application_result(application_result result,
+                                             frame& current_frame) {
     switch (result) {
     case application_result::FACT: {
-        unwind();
+        unwind(current_frame);
         return true;
     }
     case application_result::RULE: {
@@ -389,15 +428,19 @@ void frame_solver::handle_disjunction(frame& current_frame) {
 }
 
 void frame_solver::handle_cut(frame& current_frame) {
-    current_frame.continuation.remains = false;
-    choices.erase(
-        choices.begin() + static_cast<std::ptrdiff_t>(current_frame.
-            cut_point.raw()),
-        choices.end());
-    unwind();
+    erase_choices(current_frame.cut_point);
+    unwind(current_frame);
 }
 
-void frame_solver::unwind() {
+void frame_solver::erase_choices(choice_idx cut_point) {
+    choices.erase(
+        choices.begin() + static_cast<std::ptrdiff_t>(cut_point.raw()),
+        choices.end());
+}
+
+
+void frame_solver::unwind(frame& current_frame) {
+    current_frame.continuation.remains = false;
     while (stack_index != frame_idx::invalid() &&
            !stack[stack_index].continuation.remains) {
         stack_index = stack[stack_index].parent;
@@ -406,6 +449,16 @@ void frame_solver::unwind() {
 
 // Returns whether backtrack was successful
 bool frame_solver::backtrack() {
+
+    // If the backtrack is coming from a success, remove all negation choice points.
+
+    // if (success) {
+    //     while (!choices.empty() &&
+    //            choices.back().type == choice_point_type::NEGATION) {
+    //         choices.pop_back();
+    //     }
+    // }
+
     if (!restore_decision_point()) {
         found_all = true;
         return false;
@@ -622,10 +675,6 @@ int frame_solver::eval_arith(term_idx i) const {
     } catch (std::exception& e) {
         throw prolog_user_error(e.what());
     }
-}
-
-bool frame_solver::operator*() const {
-    return stack_index == frame_idx::invalid();
 }
 
 bool frame_solver::at_end() const {

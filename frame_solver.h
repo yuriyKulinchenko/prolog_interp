@@ -21,8 +21,9 @@ class frame_solver {
 public:
     using application_result = frame_solver_types::application_result;
     using continuation_state = frame_solver_types::continuation_state;
-    using frame = frame_solver_types::frame;
     using choice_point = frame_solver_types::choice_point;
+    using step_result = frame_solver_types::step_result;
+    using frame = frame_solver_types::frame;
 
     explicit
     frame_solver(unification_environment& environment,
@@ -33,10 +34,8 @@ public:
     }
 
     void solve(term_idx goal_index);
-    frame_solver& operator++();
-    bool operator*() const;
-
-    frame_solver_types::step_result step();
+    step_result step();
+    bool next();
 
     application_result apply_clause(clause_idx clause_index,
                                     term_idx head_index,
@@ -47,7 +46,7 @@ public:
                                          term_idx head_index,
                                          frame& current_frame);
 
-    void unwind();
+    void unwind(frame& current_frame);
     bool backtrack();
     choice_vec& get_choices();
     frame_vec& get_stack();
@@ -79,12 +78,14 @@ private:
 
     // handle_rule() returns true if and only if rule application is successful.
     bool handle_rule(frame& current_frame);
-    bool handle_application_result(application_result result);
+    bool handle_application_result(application_result result,
+                                   frame& current_frame);
 
     void handle_conjunction(frame& current_frame);
     void handle_disjunction(frame& current_frame);
     void handle_cut(frame& current_frame);
 
+    void erase_choices(choice_idx cut_point);
 
     unification_environment& env;
     choice_vec choices;

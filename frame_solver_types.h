@@ -67,18 +67,47 @@ struct frame {
     continuation_state parent_continuation;
 };
 
-struct choice_point {
-    choice_point(prolog_timestamp timestamp,
-                   frame_idx stack_index,
-                   size_t stack_size,
-                   size_t decision_index):
 
+/*
+
+How does negation work?
+
+Negation is a type of rule invocation, with some special properties:
+When a negation frame is encountered, continuation.remains is true
+This way, during an unwind(), backwards navigation stops.
+
+When this happens, all decision points introduced after entering the negation
+are cut, and a backtrack is invoked (failure).
+
+A negation also drops a special kind of choice point - NEGATION
+When this choice point is encountered, this means that the goal inside the negation
+failed.
+
+Upon this happening, the goal will be made to instantly succeed.
+
+*/
+
+enum class choice_point_type {
+    CHOICE, NEGATION
+
+};
+
+struct choice_point {
+    choice_point(const prolog_timestamp& timestamp,
+                 frame_idx stack_index,
+                 size_t stack_size,
+                 size_t decision_index,
+                 choice_point_type type = choice_point_type::CHOICE
+        ):
+
+        type(type),
         timestamp(timestamp),
         stack_index(stack_index),
         stack_size(stack_size),
         decision_index(decision_index) {
     }
 
+    choice_point_type type;
     prolog_timestamp timestamp;
     frame_idx stack_index;
     size_t stack_size;
@@ -97,10 +126,12 @@ enum class step_type {
 
 struct step_result {
     explicit step_result(step_type type):
-    type(type), data(std::monostate{}) {}
+        type(type), data(std::monostate{}) {
+    }
 
     explicit step_result(step_type type, clause_idx index):
-    type(type), data(index) {}
+        type(type), data(index) {
+    }
 
     step_type type;
     std::variant<std::monostate, clause_idx> data;
@@ -136,8 +167,14 @@ struct frame_logger_configuration {
 };
 
 struct prolog_user_error : std::exception {
-    explicit prolog_user_error(std::string message) : message_(std::move(message)) {}
-    [[nodiscard]] const char* what() const noexcept override { return message_.c_str(); }
+    explicit prolog_user_error(std::string message) : message_(
+        std::move(message)) {
+    }
+
+    [[nodiscard]] const char* what() const noexcept override {
+        return message_.c_str();
+    }
+
 private:
     std::string message_;
 };
