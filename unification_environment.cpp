@@ -115,7 +115,8 @@ clause_idx unification_environment::add_clause(node& node_instance) {
 
 // 'variable_bindings' and 'dirty_indices' are used during clause duplication
 
-void unification_environment::add_variable_binding(var_name_idx original, term_idx duplicate) {
+void unification_environment::add_variable_binding(
+    var_name_idx original, term_idx duplicate) {
     variable_bindings[original] = duplicate;
     dirty_indices[dirty_indices_length++] = original.raw();
 }
@@ -617,7 +618,7 @@ bool unification_environment::is_infix_term(term_idx i) {
     case get_reserved_identifier_index("<").raw():
     case get_reserved_identifier_index(">").raw():
 
-         return true;
+        return true;
     default:
         return false;
     }
@@ -838,44 +839,6 @@ int unification_environment::evaluate_arithmetic_term(term_idx i) {
 
 #undef CASE_STATEMENT
 
-
-void unification_environment::run_interpreter() {
-    term_idx base_term{term_vector.size()};
-    for (;;) {
-        unwind_term_vector(base_term);
-        name_variable_map.clear();
-        std::cout << "?- ";
-        std::string s;
-        std::getline(std::cin, s);
-        if (s.empty()) continue;
-
-        try {
-            lexer lexer(std::move(s));
-            parser parser(lexer.run(), lexer);
-            node n = parser.query();
-
-            term_idx goal_index = add_node(n);
-
-            frame_solver solver{*this};
-            solver.solve(goal_index);
-
-            while (solver.next()) {
-                std::println("{}true{}", GREEN, RESET);
-                log_variables();
-                std::string command;
-                std::getline(std::cin, command);
-            }
-
-            std::println("{}false{}", RED, RESET);
-        } catch (frame_solver_types::prolog_user_error& e) {
-            if (std::string{e.what()} == "halt/0: execution halted by user") {
-                return;
-            }
-            std::println("{}{}{}", RED, e.what(), RESET);
-        }
-    }
-}
-
 prolog_timestamp unification_environment::get_timestamp() {
     return {
         term_idx{term_vector.size()},
@@ -912,8 +875,8 @@ size_t unification_environment::get_term_count() const {
     return term_vector.size();
 }
 
-const std::unordered_map<std::string, term_idx>&
-unification_environment::get_name_variable_map() const {
+std::unordered_map<std::string, term_idx>&
+unification_environment::get_name_variable_map() {
     return name_variable_map;
 }
 

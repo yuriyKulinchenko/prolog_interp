@@ -33,7 +33,6 @@ clauses that can be invoked by a solver.
 
 class unification_environment {
 public:
-    friend class solver;
     friend class frame_solver;
     unification_environment();
 
@@ -44,14 +43,13 @@ public:
     void test_unification();
     void test_clauses(const std::string& path);
     void test_duplication(const std::string& path);
-    void run_interpreter();
 
     trail_vec& get_trail();
 
     [[nodiscard]] const name_vec& get_names() const;
     [[nodiscard]] const var_name_vec& get_var_names() const;
-    [[nodiscard]] const std::unordered_map<std::string, term_idx>&
-    get_name_variable_map() const;
+    [[nodiscard]] std::unordered_map<std::string, term_idx>&
+    get_name_variable_map();
 
     [[nodiscard]] prolog_term& get_term_at(term_idx i);
     [[nodiscard]] size_t get_term_count() const;
@@ -62,6 +60,9 @@ public:
     void log_term(term_idx i, int depth = max_logging_depth);
     void log_bracketed_term(term_idx i, int depth = max_logging_depth);
     void log_variables();
+
+    prolog_timestamp get_timestamp();
+    void apply_timestamp(prolog_timestamp timestamp);
 
     static consteval name_idx get_reserved_identifier_index(
         std::string_view s) {
@@ -120,9 +121,6 @@ private:
 
     term_idx evaluate_and_create_arithmetic_term(term_idx i);
     int evaluate_arithmetic_term(term_idx i);
-
-    prolog_timestamp get_timestamp();
-    void apply_timestamp(prolog_timestamp timestamp);
 
     // For clause duplication:
     void add_variable_binding(var_name_idx original, term_idx duplicate);

@@ -118,13 +118,15 @@ node::node(node_type type, int integer, const position_range& range)
     : type(type), tagged_union(integer), range(range) {
 }
 
-node::node(node_type type, std::vector<node> children, const position_range& range)
+node::node(node_type type, std::vector<node> children,
+           const position_range& range)
     : type(type), tagged_union(0), children(std::move(children)), range(range) {
 }
 
-node::node(node_type type, std::string name, std::vector<node> children, const position_range& range)
+node::node(node_type type, std::string name, std::vector<node> children,
+           const position_range& range)
     : type(type), tagged_union(std::move(name)),
-    children(std::move(children)), range(range) {
+      children(std::move(children)), range(range) {
 }
 
 std::string& node::name() {
