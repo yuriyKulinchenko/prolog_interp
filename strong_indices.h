@@ -4,9 +4,22 @@
 #include <cstddef>
 #include <functional>
 #include <limits>
-#include <ostream>
 
 #include "helper.h"
+
+/*
+
+The purpose of strong_index is to provide a zero-overhead alias for size_t
+which has the property that strong_index<T> is only convertible to
+strong_index<U> if T = U. This prevents misuse of index variables, as you
+cannot mistakenly use one strong index in place of another.
+
+strong_vector is a zero-overhead wrapper around std::vector which takes
+2 template parameters: a strong_index type, and an element type.
+strong_vector<strong_index<T>, U> can only be accessed with indices of
+the type strong_index<T>.
+
+*/
 
 template <typename Tag>
 struct strong_index {

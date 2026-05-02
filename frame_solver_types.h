@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <string>
+
 #include "helper.h"
 #include "prolog_types.h"
 #include "strong_indices.h"
@@ -66,26 +67,6 @@ struct frame {
     continuation_state continuation;
     continuation_state parent_continuation;
 };
-
-
-/*
-
-How does negation work?
-
-Negation is a type of rule invocation, with some special properties:
-When a negation frame is encountered, continuation.remains is true
-This way, during an unwind(), backwards navigation stops.
-
-When this happens, all decision points introduced after entering the negation
-are cut, and a backtrack is invoked (failure).
-
-A negation also drops a special kind of choice point - NEGATION
-When this choice point is encountered, this means that the goal inside the negation
-failed.
-
-Upon this happening, the goal will be made to instantly succeed.
-
-*/
 
 enum class choice_point_type {
     CHOICE, NEGATION

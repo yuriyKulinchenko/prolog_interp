@@ -1,9 +1,9 @@
-#include "unification_environment.h"
-#include "helper.h"
 #include <iostream>
 #include <print>
 #include <algorithm>
 
+#include "unification_environment.h"
+#include "helper.h"
 #include "frame_solver.h"
 
 unification_environment::unification_environment() {
@@ -115,17 +115,12 @@ clause_idx unification_environment::add_clause(node& node_instance) {
 
 // 'variable_bindings' and 'dirty_indices' are used during clause duplication
 
-strong_vector<var_name_idx, term_idx> variable_bindings;
-std::vector<size_t> dirty_indices;
-size_t dirty_indices_length;
-int anonymous_var_count = 0;
-
-void add_variable_binding(var_name_idx original, term_idx duplicate) {
+void unification_environment::add_variable_binding(var_name_idx original, term_idx duplicate) {
     variable_bindings[original] = duplicate;
     dirty_indices[dirty_indices_length++] = original.raw();
 }
 
-void clear_variable_bindings() {
+void unification_environment::clear_variable_bindings() {
     for (int i = 0; i < dirty_indices_length; i++) {
         variable_bindings[var_name_idx{dirty_indices[i]}] = term_idx::invalid();
     }
@@ -619,11 +614,10 @@ bool unification_environment::is_infix_term(term_idx i) {
     case get_reserved_identifier_index("is").raw():
     case get_reserved_identifier_index("=").raw():
     case get_reserved_identifier_index("\\=").raw():
-    case get_reserved_identifier_index("\\+").raw():
     case get_reserved_identifier_index("<").raw():
     case get_reserved_identifier_index(">").raw():
 
-        return true;
+         return true;
     default:
         return false;
     }
@@ -829,6 +823,7 @@ int unification_environment::evaluate_arithmetic_term(term_idx i) {
         CASE_STATEMENT(+);
         CASE_STATEMENT(*);
         CASE_STATEMENT(-);
+        CASE_STATEMENT(/);
         default: {
             throw formatted_error(
                 "ERROR: '{}' is not a valid arithmetic function",

@@ -1,11 +1,5 @@
-//
-// Created by Yuriy Kulinchenko on 26/04/2026.
-//
-
 #include "lexer_parser.h"
 #include "helper.h"
-
-#include <iostream>
 
 std::vector<node> lexer_parser::program(const std::string& source) {
     initialize(source);

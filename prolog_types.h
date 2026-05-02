@@ -6,7 +6,6 @@
 
 #include "frontend_types.h"
 #include "helper.h"
-#include "prolog_types.h"
 #include "strong_indices.h"
 
 struct term_tag {

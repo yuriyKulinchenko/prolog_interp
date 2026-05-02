@@ -1,70 +1,3 @@
-/*
-
-The key idea with the frame based solver is that completed branches are NOT popped from
-the frame stack, unlike the original solver class, and the previous implementation of
-the frame solver. For instance:
-
-p :- q, r.
-
-q :- a1.
-r :- b1.
-
-a1 :- a2. a2 :- a3. ... a99 :- a100.
-b1 :- b2. b2 :- b3. ... b99 :- b100.
-a100 :- x; y.
-b100.
-
-Using the implementation of the old frame solver, the stack behaviour would look like this:
-
-[p] -> [p][q, r] -> [p][q, r][a1]...[a100][x] -> stack collapses -> [p][q, r][b1]...[b100]
-
-The key issue is that the decision point make by a100 needs to be recoverable: this is not possible
-under this model without storing the entire stack.
-
-Here is the new execution model:
-
-[p] -> [p][q, r] -> [p][q, r][a1]...[a100][x] -> [p][q, r][a1]...[a100][x][b1]...[b100]
-
-The key difference is that now, every branch is stored. the decision point now only has to
-truncate the stack, instead of performing any complex recovery. This saves significant space
-in each decision point, and also preserves the decision graph.
-
-Note that this relies on every frame having a pointer to its parent - something that didn't need
-to be present before.
-
-PRECISE EXECUTION MODEL:
-
-The frame_solver will effectively execute as a VM, with the following behaviour:
-
-There are several distinct frame types, currently including:
-- RULE
-- CONJUNCTION
-- DISJUNCTION
-
-The VM is in 2 possible states of execution. It is either growing the stack, or following
-the stack backwards via the parent pointers of each of the frames (shrinking state).
-Each of the following behaviours assume that the VM is in the growing state.
-The shrinking state is not that difficult to implement, as it is effectively
-pointer traversal.
-
-When the VM encounters a rule, it does the following:
-- The continuation is incremented from 0 to 1
-- It chooses the correct decision index (more on this when discussing decision points)
-- It places the body of the chosen rule onto the stack
-
-More details to follow...
-
-
-More complex predicates: negation and findall
-
-
-find_lessons(Bag) :-
-    findall(X, happening(X,chemistry), Bag).
-
-*/
-
-
-#include <cassert>
 #include <iostream>
 
 #include "frame_solver.h"
@@ -106,6 +39,7 @@ do {                    \
     puts("\n");         \
 } while (false)
 
+#include <cassert>
 #define ASSERT(X) assert(X)
 
 #else
@@ -449,16 +383,6 @@ void frame_solver::unwind(frame& current_frame) {
 
 // Returns whether backtrack was successful
 bool frame_solver::backtrack() {
-
-    // If the backtrack is coming from a success, remove all negation choice points.
-
-    // if (success) {
-    //     while (!choices.empty() &&
-    //            choices.back().type == choice_point_type::NEGATION) {
-    //         choices.pop_back();
-    //     }
-    // }
-
     if (!restore_decision_point()) {
         found_all = true;
         return false;

@@ -1,7 +1,3 @@
-//
-// Created by Yuriy Kulinchenko on 27/03/2026.
-//
-
 #ifndef PARSER_H
 #define PARSER_H
 
@@ -11,6 +7,8 @@
 
 
 /*
+
+Full grammar that is currently parsed:
 
 Program ::= Clause*
 
@@ -46,9 +44,6 @@ List ::= '[]'
 Elements ::= Term (',' Term)*
 
 Comparison ::= ('='|'is'|'<','>'|'=<'|'>=' | '=:=')
-
-For now, the assumption is that only a set of rules will be parsed.
-The querying will be done through the terminal
 
  */
 
