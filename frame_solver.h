@@ -77,11 +77,10 @@ public:
     [[nodiscard]] frame_idx get_stack_pointer() const { return stack_index; }
 
 private:
-
     application_result apply_clause(clause_idx clause_index,
-                                   term_idx head_index,
-                                   frame_idx parent, choice_idx cut_point,
-                                   continuation_state parent_continuation);
+                                    term_idx head_index,
+                                    frame_idx parent, choice_idx cut_point,
+                                    continuation_state parent_continuation);
 
     application_result apply_clause_tail(clause_idx clause_index,
                                          term_idx head_index,

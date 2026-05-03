@@ -90,6 +90,10 @@ std::vector<token> lexer::run() {
         }
 
         case '/': {
+            if (match('*')) {
+                handle_comment();
+                break;
+            }
             emit_token(SLASH);
             break;
         }
@@ -329,6 +333,19 @@ position_range lexer::get_range(int range) const {
     text_position end = {current_line_index, i, line_number};
     return {start, end};
 }
+
+void lexer::handle_comment() {
+    while (!at_end()) {
+        char c = advance();
+        if (c == '\n') {
+            line_number++;
+            current_line_index = i;
+        } else if (c == '*' && !at_end() && match('/')) {
+            return;
+        }
+    }
+}
+
 
 
 

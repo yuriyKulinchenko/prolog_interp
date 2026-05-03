@@ -26,6 +26,7 @@ private:
     bool check(char c);
     bool match(char c);
     bool at_end();
+    void handle_comment();
 
     void emit_token(token_type type, position_range range,
                     const std::string& identifier);
